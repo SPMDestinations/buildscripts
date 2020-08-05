@@ -8,7 +8,7 @@
 
 # Usage: $0 dest ubuntu-swift-pkg
 
-set -eu
+set -e
 
 BUILD_DIR=${BUILD_DIR:=${PWD}/.build}
 FETCH_DIR=${FETCH_DIR:=${PWD}/.fetch}
@@ -16,7 +16,11 @@ SWIFT_VERSION=${SWIFT_VERSION:=5.2}
 TARGET_ARCH=${TARGET_ARCH:=x86_64}
 TARGET_PLATFORM=${TARGET_PLATFORM:=ubuntu16.04}
 CROSS_TOOLCHAIN_NAME=${CROSS_TOOLCHAIN_NAME:=swift-${SWIFT_VERSION}-${TARGET_PLATFORM}.xtoolchain}
-HOST_PLATFORM=x86_64
+HOST_PLATFORM=${HOST_PLATFORM:=x86_64}
+
+# must be specified, absolute URL:
+#   e.g. /usr/local/lib/swift/dst/${TARGET_ARCH}-unknown-linux}
+INSTALL_PREFIX=${INSTALL_PREFIX:=${BUILD_DIR}}
 
 # brew install swiftxcode/swiftxcode/swift-xctoolchain-5.2
 # brew install swiftxcode/swiftxcode/clang-llvm-bin-8
@@ -86,8 +90,10 @@ function fix_glibc_modulemap() {
 # set -xv # for debugging
 
 # where to get stuff from
-linux_swift_pkg=$(realpath "$1") # this is going to be automatic
-test -f "$linux_swift_pkg"
+if [[ "x$1" != "x" ]]; then
+  linux_swift_pkg=$(realpath "$1") # this is going to be automatic
+  test -f "$linux_swift_pkg"
+fi
 
 # config
 blocks_h_url="https://raw.githubusercontent.com/apple/swift-corelibs-libdispatch/master/src/BlocksRuntime/Block.h"
@@ -143,33 +149,74 @@ cp -ac "$HOST_X_LLD" "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/${xc_tc_name}/usr/bin
 
 # swift.xctoolchain/usr/lib/swift_static/linux
 # swift.xctoolchain/usr/lib/swift/linux
-echo "Coping in headers/libs from target Swift toolchain: ${linux_swift_pkg} ..."
 (
-# FIXME: just tar xvf over the right location
-tmp=$(mktemp -d "${BUILD_DIR}/tmp_pkgs_XXXXXX")
-tar -C "$tmp" --strip-components 1 -xf "$linux_swift_pkg"
+if [[ "x$linux_swift_pkg" != "x" ]]; then
+  echo "Coping in headers/libs from target Swift toolchain: ${linux_swift_pkg} ..."
+  tmp=$(mktemp -d "${BUILD_DIR}/tmp_pkgs_XXXXXX")
+  tar -C "$tmp" --strip-components 1 -xf "$linux_swift_pkg"
+  UNPACKED_LINUX_TC="$tmp"
+else
+  echo "Coping in headers/libs from target Swift toolchain (inline) ..."
+  UNPACKED_LINUX_TC="."
+  file -d usr
+fi
 
+# TBD: This might not be necessary when we use `-resource-dir` to point the
+#      compiler to the actual Ubuntu SDK (it defaults to the host)!
+#      In here we essentially dupe the Linux Swift stuff into the Host
+#      compiler.
 echo "  .. Linux Swift libs/mods into host toolchain ..."
-cp -ac "$tmp/usr/lib/swift/linux"          "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/lib/swift/linux"
+cp -ac "${UNPACKED_LINUX_TC}/usr/lib/swift/linux" \
+       "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/lib/swift/linux"
 mkdir -p "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/lib/swift_static"
-cp -ac "$tmp/usr/lib/swift_static/linux"   "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/lib/swift_static/linux"
+cp -ac "${UNPACKED_LINUX_TC}/usr/lib/swift_static/linux" \
+       "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/lib/swift_static/linux"
+
+cp -ac "${UNPACKED_LINUX_TC}/usr/lib/swift/Block" \
+       "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/lib/swift/Block"
+cp -ac "${UNPACKED_LINUX_TC}/usr/lib/swift/CFURLSessionInterface" \
+       "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/lib/swift/CFURLSessionInterface"
+cp -ac "${UNPACKED_LINUX_TC}/usr/lib/swift/CoreFoundation" \
+       "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/lib/swift/CoreFoundation"
+cp -ac "${UNPACKED_LINUX_TC}/usr/lib/swift/dispatch" \
+       "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/lib/swift/dispatch"
+cp -ac "${UNPACKED_LINUX_TC}/usr/lib/swift/os" \
+       "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/lib/swift/os"
+# includes twice when leaving the .org inside ...
+#mv "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/lib/swift/shims" \
+#   "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/lib/swift/shims.org"
+rm -rf "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/lib/swift/shims"
+cp -ac "${UNPACKED_LINUX_TC}/usr/lib/swift/shims" \
+       "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/lib/swift/shims"
+
+# Another Hack which works around the wrong includes being picked up.
+# We essentially morph the Host toolchain within into a target one ...
+# Maybe the above should just do the same ...
+mv "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/include" \
+   "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/include.org"
+# This is not quite right, lets use the Linux TC stuff and merge stuff in
+#ln -s ../../$linux_sdk_name/usr/include \
+#      ${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/include
+cp -ac "${UNPACKED_LINUX_TC}/usr/include" \
+       "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/include"
+ln -s "../../../../${linux_sdk_name}/usr/include/c++/5" \
+      "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/include/c++/5"
+ln -s "../include.org/swift" \
+      "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/include/swift"
 
 echo "  .. Linux Swift libs/mods into target toolchain ..."
-mkdir -p "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$linux_sdk_name/usr/lib/swift"
-mkdir -p "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$linux_sdk_name/usr/lib/swift_static"
-cp -ac "$tmp/usr/lib/swift/linux"          "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$linux_sdk_name/usr/lib/swift/linux"
-cp -ac "$tmp/usr/lib/swift_static/linux"   "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$linux_sdk_name/usr/lib/swift_static/linux"
+cp -ac "${UNPACKED_LINUX_TC}/usr/lib/swift" \
+       "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$linux_sdk_name/usr/lib/swift"
+cp -ac "${UNPACKED_LINUX_TC}/usr/lib/swift_static" \
+       "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$linux_sdk_name/usr/lib/swift_static"
 
-echo "  .. Linux Swift libs/mods into host toolchain ..."
-cp -ac "$tmp/usr/lib/swift/dispatch"       "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$linux_sdk_name/usr/include/dispatch"
-cp -ac "$tmp/usr/lib/swift/CoreFoundation" "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$linux_sdk_name/usr/include/CoreFoundation"
-cp -ac "$tmp/usr/lib/swift/os"             "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$linux_sdk_name/usr/include/os"
-rm -rf "$tmp"
-
+if [[ "x$linux_swift_pkg" != "x" ]]; then
+  rm -rf "$tmp"
+fi
 echo "  ok."
 )
 
-
+# TBD: is this really necessary?
 echo "Fetching/Installing Block.h ..."
 curl --fail -s -o "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$linux_sdk_name/usr/include/Block.h" "$blocks_h_url"
 
@@ -193,16 +240,16 @@ fix_glibc_modulemap "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$linux_sdk_name/usr/li
 cat > "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/destination.json" <<EOF
 {
     "version": 1,
-    "sdk": "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$linux_sdk_name",
-    "toolchain-bin-dir": "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/bin",
+    "sdk": "${INSTALL_PREFIX}/${CROSS_TOOLCHAIN_NAME}/$linux_sdk_name",
+    "toolchain-bin-dir": "${INSTALL_PREFIX}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/bin",
     "target": "x86_64-unknown-linux",
     "extra-cc-flags": [
         "-fPIC"
     ],
     "extra-swiftc-flags": [
         "-use-ld=lld", 
-        "-tools-directory", "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/bin",
-        "-sdk", "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$linux_sdk_name"
+        "-tools-directory", "${INSTALL_PREFIX}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/bin",
+        "-sdk", "${INSTALL_PREFIX}/${CROSS_TOOLCHAIN_NAME}/$linux_sdk_name"
     ],
     "extra-cpp-flags": [
         "-lstdc++"
