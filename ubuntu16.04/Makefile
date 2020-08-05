@@ -74,14 +74,14 @@ distclean: clean
 
 swift-5.3-patch: patch-5.3/build.patch
 	
-patch-5.3/build.patch: Makefile retrieve-sdk-packages.sh patch-5.3/build-toolchain.sh patch-5.3/Makefile
+patch-5.3/build.patch: Makefile retrieve-sdk-packages.sh build-toolchain.sh patch-5.3/Makefile
 	$(RM_RF) $@
 	$(RM_RF) $(PATCH_DIR)
 	$(MKDIR) -p $(PATCH_DIR)/empty
 	$(MKDIR) -p $(PATCH_DIR)/patched
-	$(CP) -ac retrieve-sdk-packages.sh     $(PATCH_DIR)/patched/
-	$(CP) -ac patch-5.3/build-toolchain.sh $(PATCH_DIR)/patched/
-	$(CP) -ac patch-5.3/Makefile           $(PATCH_DIR)/patched/
+	$(CP) -ac retrieve-sdk-packages.sh $(PATCH_DIR)/patched/
+	$(CP) -ac build-toolchain.sh       $(PATCH_DIR)/patched/
+	$(CP) -ac patch-5.3/Makefile       $(PATCH_DIR)/patched/
 	(cd $(PATCH_DIR); $(DIRDIFF) empty patched > $(PWD)/$@ ; [ $$? -eq 1 ])
 	cat patch-5.3/build.patch | shasum -a 256
 
