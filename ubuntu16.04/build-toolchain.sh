@@ -8,7 +8,7 @@
 
 # Usage: $0 dest ubuntu-swift-pkg
 
-set -eu
+set -e
 
 BUILD_DIR=${BUILD_DIR:=${PWD}/.build}
 FETCH_DIR=${FETCH_DIR:=${PWD}/.fetch}
@@ -90,8 +90,10 @@ function fix_glibc_modulemap() {
 # set -xv # for debugging
 
 # where to get stuff from
-linux_swift_pkg=$(realpath "$1") # this is going to be automatic
-test -f "$linux_swift_pkg"
+if [[ "x$1" != "x" ]]; then
+  linux_swift_pkg=$(realpath "$1") # this is going to be automatic
+  test -f "$linux_swift_pkg"
+fi
 
 # config
 blocks_h_url="https://raw.githubusercontent.com/apple/swift-corelibs-libdispatch/master/src/BlocksRuntime/Block.h"
