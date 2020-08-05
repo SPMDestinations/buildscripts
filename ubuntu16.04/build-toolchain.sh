@@ -192,15 +192,23 @@ cp -ac "${UNPACKED_LINUX_TC}/usr/lib/swift/shims" \
 # Another Hack which works around the wrong includes being picked up.
 # We essentially morph the Host toolchain within into a target one ...
 # Maybe the above should just do the same ...
-mv ${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/include \
-   ${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/include.org
-ln -s ../../$linux_sdk_name/usr/include \
-      ${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/include
-
+mv "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/include" \
+   "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/include.org"
+# This is not quite right, lets use the Linux TC stuff and merge stuff in
+#ln -s ../../$linux_sdk_name/usr/include \
+#      ${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/include
+cp -ac "${UNPACKED_LINUX_TC}/usr/include" \
+       "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/include"
+ln -s "../../../../${linux_sdk_name}/usr/include/c++/5" \
+      "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/include/c++/5"
+ln -s "../include.org/swift" \
+      "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/include/swift"
 
 echo "  .. Linux Swift libs/mods into target toolchain ..."
-cp -ac "${UNPACKED_LINUX_TC}/usr/lib/swift"        "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$linux_sdk_name/usr/lib/swift"
-cp -ac "${UNPACKED_LINUX_TC}/usr/lib/swift_static" "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$linux_sdk_name/usr/lib/swift_static"
+cp -ac "${UNPACKED_LINUX_TC}/usr/lib/swift" \
+       "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$linux_sdk_name/usr/lib/swift"
+cp -ac "${UNPACKED_LINUX_TC}/usr/lib/swift_static" \
+       "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$linux_sdk_name/usr/lib/swift_static"
 
 if [[ "x$linux_swift_pkg" != "x" ]]; then
   rm -rf "$tmp"
