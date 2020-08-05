@@ -149,6 +149,8 @@ echo "Coping in headers/libs from target Swift toolchain: ${linux_swift_pkg} ...
 tmp=$(mktemp -d "${BUILD_DIR}/tmp_pkgs_XXXXXX")
 tar -C "$tmp" --strip-components 1 -xf "$linux_swift_pkg"
 
+# TBD: This might not be necessary when we use `-resource-dir` to point the
+#      compiler to the Ubuntu SDK (it defaults to the host).
 echo "  .. Linux Swift libs/mods into host toolchain ..."
 cp -ac "$tmp/usr/lib/swift/linux"          "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/lib/swift/linux"
 mkdir -p "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/lib/swift_static"
@@ -162,7 +164,7 @@ rm -rf "$tmp"
 echo "  ok."
 )
 
-
+# TBD: is this really necessary?
 echo "Fetching/Installing Block.h ..."
 curl --fail -s -o "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$linux_sdk_name/usr/include/Block.h" "$blocks_h_url"
 
