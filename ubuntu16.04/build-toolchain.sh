@@ -148,17 +148,39 @@ echo "Coping in headers/libs from target Swift toolchain: ${linux_swift_pkg} ...
 # FIXME: just tar xvf over the right location
 tmp=$(mktemp -d "${BUILD_DIR}/tmp_pkgs_XXXXXX")
 tar -C "$tmp" --strip-components 1 -xf "$linux_swift_pkg"
+UNPACKED_LINUX_TC="$tmp"
 
 # TBD: This might not be necessary when we use `-resource-dir` to point the
-#      compiler to the Ubuntu SDK (it defaults to the host).
+#      compiler to the actual Ubuntu SDK (it defaults to the host)!
+#      In here we essentially dupe the Linux Swift stuff into the Host
+#      compiler.
 echo "  .. Linux Swift libs/mods into host toolchain ..."
-cp -ac "$tmp/usr/lib/swift/linux"          "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/lib/swift/linux"
+cp -ac "${UNPACKED_LINUX_TC}/usr/lib/swift/linux" \
+       "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/lib/swift/linux"
 mkdir -p "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/lib/swift_static"
-cp -ac "$tmp/usr/lib/swift_static/linux"   "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/lib/swift_static/linux"
+cp -ac "${UNPACKED_LINUX_TC}/usr/lib/swift_static/linux" \
+       "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/lib/swift_static/linux"
+
+cp -ac "${UNPACKED_LINUX_TC}/usr/lib/swift/Block" \
+       "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/lib/swift/Block"
+cp -ac "${UNPACKED_LINUX_TC}/usr/lib/swift/CFURLSessionInterface" \
+       "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/lib/swift/CFURLSessionInterface"
+cp -ac "${UNPACKED_LINUX_TC}/usr/lib/swift/CoreFoundation" \
+       "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/lib/swift/CoreFoundation"
+cp -ac "${UNPACKED_LINUX_TC}/usr/lib/swift/dispatch" \
+       "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/lib/swift/dispatch"
+cp -ac "${UNPACKED_LINUX_TC}/usr/lib/swift/os" \
+       "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/lib/swift/os"
+mv "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/lib/swift/shims" \
+   "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/lib/swift/shims.org"
+cp -ac "${UNPACKED_LINUX_TC}/usr/lib/swift/shims" \
+       "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/lib/swift/shims"
+
+
 
 echo "  .. Linux Swift libs/mods into target toolchain ..."
-cp -ac "$tmp/usr/lib/swift"        "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$linux_sdk_name/usr/lib/swift"
-cp -ac "$tmp/usr/lib/swift_static" "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$linux_sdk_name/usr/lib/swift_static"
+cp -ac "${UNPACKED_LINUX_TC}/usr/lib/swift"        "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$linux_sdk_name/usr/lib/swift"
+cp -ac "${UNPACKED_LINUX_TC}/usr/lib/swift_static" "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$linux_sdk_name/usr/lib/swift_static"
 
 rm -rf "$tmp"
 echo "  ok."
