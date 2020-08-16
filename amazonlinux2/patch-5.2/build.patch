@@ -1,0 +1,578 @@
+diff -ruN empty/Makefile patched/Makefile
+--- empty/Makefile	1970-01-01 01:00:00.000000000 +0100
++++ patched/Makefile	2020-08-07 17:47:06.000000000 +0200
+@@ -0,0 +1,86 @@
++# Makefile
++#
++# Created by Helge Heß
++# Copyright © 2020 ZeeZide GmbH. All rights reserved.
++
++# This is a Makefile variant for direct consumption. Plus some extra stuff
++# for testing purposes.
++
++prefix=/usr/local
++# This is required because we need to hardcode the destination.json to the
++# actual location.
++ACTUAL_DESTINATION_PREFIX=/usr/local
++
++VERSION=5.2
++HOST_VERSION=$(VERSION)
++TARBALL_VERSION=$(VERSION)
++
++TARGET_ARCH=x86_64
++TARGET_TRIPLE=$(TARGET_ARCH)-unknown-linux
++LINUX_TARGET_TRIPLE=$(TARGET_ARCH)-linux-gnu
++PLATFORM=amazonlinux2
++
++HOST_SWIFT_TOOLCHAIN=/usr/local/lib/swift/xctoolchains/$(TARGET_ARCH)-apple-darwin/$(HOST_VERSION)-current/swift.xctoolchain
++
++BUILD_DIR=$(PWD)/.build
++FETCH_DIR=$(PWD)/.fetch
++
++DESTDIR_RELAPTH=lib/swift/dst/$(TARGET_TRIPLE)
++DESTDIR_PREFIX=$(prefix)/$(DESTDIR_RELAPTH)
++INSTALL_PREFIX=$(ACTUAL_DESTINATION_PREFIX)/$(DESTDIR_RELAPTH)
++
++ALX_awsdomain=amazonaws.com
++ALX_awsregion=default
++ALX_product=core
++ALX_target=latest
++ALX_basearch=$(TARGET_ARCH)
++ALX_releasever=2
++ALX_CORE_MIRROR_LIST="http://amazonlinux.${ALX_awsregion}.${ALX_awsdomain}/${ALX_releasever}/${ALX_product}/${ALX_target}/${ALX_basearch}/mirror.list"
++ALX_BLOBSTORE_URL="https://cdn.amazonlinux.com/blobstore"
++
++CROSS_TOOLCHAIN_NAME=swift-$(VERSION)-$(PLATFORM).xtoolchain
++
++include packagelist.make
++
++MKDIR=mkdir
++CP=cp
++CLONE=cp -ac
++LN_S=ln -s
++
++all: retrieve-packages build-toolchain
++
++install: all
++	$(MKDIR) -p $(DESTDIR_PREFIX)
++	$(CLONE) $(BUILD_DIR)/$(CROSS_TOOLCHAIN_NAME) \
++	         $(DESTDIR_PREFIX)/$(CROSS_TOOLCHAIN_NAME)
++
++clean:
++	$(RM_RF) $(BUILD_DIR)
++
++distclean: clean
++	$(RM_RF) $(FETCH_DIR)
++	
++retrieve-packages:
++	BUILD_DIR=$(BUILD_DIR) FETCH_DIR=$(FETCH_DIR)	\
++	TARGET_ARCH=$(TARGET_ARCH)				\
++	LINUX_TARGET_TRIPLE=$(LINUX_TARGET_TRIPLE)	\
++	TARGET_PLATFORM=$(PLATFORM)			\
++	TARGET_SDK_NAME=$(TARGET_ARCH)-$(PLATFORM).sdk 	\
++	ALX_CORE_MIRROR_LIST=$(ALX_CORE_MIRROR_LIST)	\
++	ALX_BLOBSTORE_URL=$(ALX_BLOBSTORE_URL)		\
++	./retrieve-sdk-packages.sh "$(PACKAGE_NAMES)"
++
++
++# toolchain builder
++
++# A different: the build-toolchain doesn't carry the parameter
++build-toolchain:
++	BUILD_DIR=$(BUILD_DIR) FETCH_DIR=$(FETCH_DIR)	\
++	SWIFT_VERSION=$(VERSION)			\
++	TARGET_ARCH=$(TARGET_ARCH)			\
++	TARGET_PLATFORM=$(PLATFORM)			\
++	HOST_SWIFT_TOOLCHAIN=$(HOST_SWIFT_TOOLCHAIN)	\
++	CROSS_TOOLCHAIN_NAME=$(CROSS_TOOLCHAIN_NAME)	\
++	HOST_PLATFORM=$(uname -m)			\
++	INSTALL_PREFIX=$(INSTALL_PREFIX)		\
++	./build-toolchain.sh
+diff -ruN empty/build-toolchain.sh patched/build-toolchain.sh
+--- empty/build-toolchain.sh	1970-01-01 01:00:00.000000000 +0100
++++ patched/build-toolchain.sh	2020-08-06 01:35:23.000000000 +0200
+@@ -0,0 +1,272 @@
++#!/bin/bash
++#
++# Based on
++#     - https://github.com/apple/swift-package-manager/blob/master/Utilities/build_ubuntu_cross_compilation_toolchain
++
++# by Johannes Weiß
++# Adjustments by Helge Heß <me@helgehess.eu>
++
++# Usage: $0 dest ubuntu-swift-pkg
++
++set -e
++
++BUILD_DIR=${BUILD_DIR:=${PWD}/.build}
++FETCH_DIR=${FETCH_DIR:=${PWD}/.fetch}
++SWIFT_VERSION=${SWIFT_VERSION:=5.2}
++TARGET_ARCH=${TARGET_ARCH:=x86_64}
++TARGET_PLATFORM=${TARGET_PLATFORM:=ubuntu16.04}
++CROSS_TOOLCHAIN_NAME=${CROSS_TOOLCHAIN_NAME:=swift-${SWIFT_VERSION}-${TARGET_PLATFORM}.xtoolchain}
++HOST_PLATFORM=${HOST_PLATFORM:=x86_64}
++
++# must be specified, absolute URL:
++#   e.g. /usr/local/lib/swift/dst/${TARGET_ARCH}-unknown-linux}
++INSTALL_PREFIX=${INSTALL_PREFIX:=${BUILD_DIR}}
++
++# brew install swiftxcode/swiftxcode/swift-xctoolchain-5.2
++# brew install swiftxcode/swiftxcode/clang-llvm-bin-8
++# ./retrieve-sdk-packages.sh
++HOST_SWIFT_TOOLCHAIN=${HOST_SWIFT_TOOLCHAIN:=/usr/local/lib/swift/xctoolchains/${HOST_PLATFORM}-apple-darwin/${SWIFT_VERSION}-current/swift.xctoolchain}
++HOST_X_LLD=/usr/local/lib/swift/clang-llvm/${HOST_PLATFORM}-apple-darwin/8.0.0/bin/lld
++linux_sdk_name="${TARGET_ARCH}-${TARGET_PLATFORM}.sdk"
++LINUX_SDK="${BUILD_DIR}/${linux_sdk_name}"
++
++export PATH="/bin:/usr/bin"
++
++#PGK is $3
++
++function realpath() {
++    if [[ "${1:0:1}" = / ]]; then
++        echo "$1"
++    else
++        (
++        cd "$(dirname "$1")"
++        echo "$(pwd)/$(basename "$1")"
++        )
++    fi
++}
++
++# This creates the private_includes directory and adjust the absolute links in
++# the modmaps to point to that.
++function fix_glibc_modulemap() {
++    local glc_mm
++    local tmp
++    local inc_dir
++
++    glc_mm="$1"
++    echo "glibc.modulemap at '$glc_mm'"
++    test -f "$glc_mm"
++
++    tmp=$(mktemp "$glc_mm"_orig_XXXXXX)
++    inc_dir="$(dirname "$glc_mm")/private_includes"
++    cat "$glc_mm" >> "$tmp"
++    echo "Paths:"
++    echo " - original glibc.modulemap: $tmp"
++    echo " - new      glibc.modulemap: $glc_mm"
++    echo " - private includes dir    : $inc_dir"
++    echo -n > "$glc_mm"
++    rm -rf "$inc_dir"
++    mkdir "$inc_dir"
++    cat "$tmp" | while IFS='' read line; do
++        if [[ "$line" =~ ^(\ *header\ )\"\/+usr\/include\/\/?(x86_64-linux-gnu\/)?([^\"]+)\" ]]; then
++            # Sample: header "/usr/include//sys/ioctl.h"
++            # AZ Linux has double slash entries: "/usr/include//sys/ioctl.h"
++            local orig_inc
++            local rel_repl_inc
++            local repl_inc
++
++            orig_inc="${BASH_REMATCH[3]}"
++            rel_repl_inc="$(echo "$orig_inc" | tr / _)"
++            repl_inc="$inc_dir/$rel_repl_inc"
++            
++            #echo "  create repl:"
++            #echo "    $orig_inc"
++            #echo "    $rel_repl_inc $repl_inc $inc_dir"
++            #echo "    $repl_inc $inc_dir"
++            #echo "    $inc_dir"
++            
++            echo "${BASH_REMATCH[1]} \"$(basename "$inc_dir")/$rel_repl_inc\"" >> "$glc_mm"
++            if [[ "$orig_inc" == "uuid/uuid.h" ]]; then
++                # no idea why ;)
++                echo "#include <linux/uuid.h>" >> "$repl_inc"
++            else
++                echo "#include <$orig_inc>" >> "$repl_inc"
++            fi
++            true
++        else
++            echo "$line" >> "$glc_mm"
++        fi
++    done
++}
++
++# set -xv # for debugging
++
++# where to get stuff from
++if [[ "x$1" != "x" ]]; then
++  linux_swift_pkg=$(realpath "$1") # this is going to be automatic
++  test -f "$linux_swift_pkg"
++fi
++
++# config
++blocks_h_url="https://raw.githubusercontent.com/apple/swift-corelibs-libdispatch/master/src/BlocksRuntime/Block.h"
++
++if ! test -d "${HOST_SWIFT_TOOLCHAIN}"; then
++  echo "Missing host toolchain: ${HOST_SWIFT_TOOLCHAIN}"; exit 1
++fi
++if ! test -d "${LINUX_SDK}"; then
++  echo "Missing Linux SDK: ${LINUX_SDK}"; exit 1
++fi
++if ! test -x "${HOST_X_LLD}"; then
++  echo "Missing LLD: ${HOST_X_LLD}"; exit 1
++fi
++
++
++# ************************* HELPER ***********************
++
++# url, key
++function download_with_cache() {
++    mkdir -p "$FETCH_DIR"
++    local out
++    out="$FETCH_DIR/$2"
++    if [[ ! -f "$out" ]]; then
++        curl --fail -s -o "$out" "$1"
++    fi
++    echo "$out"
++}
++
++
++# ************************* RUN **************************
++
++echo "Cleaning existing chain ..."
++rm -rf "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}"
++mkdir -p "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}"
++
++# clone-copy Linux SDK w/ the unpacked packages, we need to patch it later
++echo "Cloning Linux SDK ${LINUX_SDK} ..."
++cp -ac "${LINUX_SDK}" \
++       "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/${linux_sdk_name}"
++
++# clone-copy Swift Host SDK, we need to patch it later
++echo "Cloning host Swift toolchain ${HOST_SWIFT_TOOLCHAIN} ..."
++xc_tc_name="swift.xctoolchain"
++cp -ac "${HOST_SWIFT_TOOLCHAIN}" \
++       "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/${xc_tc_name}"
++
++# Copy Linker (lld)
++# TBD: If we use an absolute path in the json-declaration, we may not need
++#      this, it copies the lld INTO the HOST Swift toolchain.
++echo "Installing LLD into host toolchain: ${HOST_X_LLD} ..."
++cp -ac "$HOST_X_LLD" "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/${xc_tc_name}/usr/bin/ld.lld"
++
++
++# swift.xctoolchain/usr/lib/swift_static/linux
++# swift.xctoolchain/usr/lib/swift/linux
++(
++if [[ "x$linux_swift_pkg" != "x" ]]; then
++  echo "Coping in headers/libs from target Swift toolchain: ${linux_swift_pkg} ..."
++  tmp=$(mktemp -d "${BUILD_DIR}/tmp_pkgs_XXXXXX")
++  tar -C "$tmp" --strip-components 1 -xf "$linux_swift_pkg"
++  UNPACKED_LINUX_TC="$tmp"
++else
++  echo "Coping in headers/libs from target Swift toolchain (inline) ..."
++  UNPACKED_LINUX_TC="."
++  file -d usr
++fi
++
++# TBD: This might not be necessary when we use `-resource-dir` to point the
++#      compiler to the actual Ubuntu SDK (it defaults to the host)!
++#      In here we essentially dupe the Linux Swift stuff into the Host
++#      compiler.
++echo "  .. Linux Swift libs/mods into host toolchain ..."
++cp -ac "${UNPACKED_LINUX_TC}/usr/lib/swift/linux" \
++       "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/lib/swift/linux"
++mkdir -p "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/lib/swift_static"
++cp -ac "${UNPACKED_LINUX_TC}/usr/lib/swift_static/linux" \
++       "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/lib/swift_static/linux"
++
++cp -ac "${UNPACKED_LINUX_TC}/usr/lib/swift/Block" \
++       "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/lib/swift/Block"
++cp -ac "${UNPACKED_LINUX_TC}/usr/lib/swift/CFURLSessionInterface" \
++       "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/lib/swift/CFURLSessionInterface"
++cp -ac "${UNPACKED_LINUX_TC}/usr/lib/swift/CoreFoundation" \
++       "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/lib/swift/CoreFoundation"
++cp -ac "${UNPACKED_LINUX_TC}/usr/lib/swift/dispatch" \
++       "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/lib/swift/dispatch"
++cp -ac "${UNPACKED_LINUX_TC}/usr/lib/swift/os" \
++       "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/lib/swift/os"
++# includes twice when leaving the .org inside ...
++#mv "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/lib/swift/shims" \
++#   "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/lib/swift/shims.org"
++rm -rf "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/lib/swift/shims"
++cp -ac "${UNPACKED_LINUX_TC}/usr/lib/swift/shims" \
++       "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/lib/swift/shims"
++
++# Another Hack which works around the wrong includes being picked up.
++# We essentially morph the Host toolchain within into a target one ...
++# Maybe the above should just do the same ...
++mv "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/include" \
++   "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/include.org"
++# This is not quite right, lets use the Linux TC stuff and merge stuff in
++#ln -s ../../$linux_sdk_name/usr/include \
++#      ${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/include
++cp -ac "${UNPACKED_LINUX_TC}/usr/include" \
++       "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/include"
++ln -s "../../../../${linux_sdk_name}/usr/include/c++/5" \
++      "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/include/c++/5"
++ln -s "../include.org/swift" \
++      "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/include/swift"
++
++echo "  .. Linux Swift libs/mods into target toolchain ..."
++cp -ac "${UNPACKED_LINUX_TC}/usr/lib/swift" \
++       "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$linux_sdk_name/usr/lib/swift"
++cp -ac "${UNPACKED_LINUX_TC}/usr/lib/swift_static" \
++       "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$linux_sdk_name/usr/lib/swift_static"
++
++if [[ "x$linux_swift_pkg" != "x" ]]; then
++  rm -rf "$tmp"
++fi
++echo "  ok."
++)
++
++# TBD: is this really necessary?
++echo "Fetching/Installing Block.h ..."
++curl --fail -s -o "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$linux_sdk_name/usr/include/Block.h" "$blocks_h_url"
++
++if [ ! -e "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/bin/swift-autolink-extract" ]; then
++  echo "Linking 'swift' to swift-autolink-extract ..."
++  ln -s swift "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/bin/swift-autolink-extract"
++fi
++
++
++# TBD: does this have absolute links?
++# fix up glibc modulemap
++# TBD: weissi was patching the host compiler, we also(?) need to patch the
++#      target (https://github.com/SPMDestinations/homebrew-tap/issues/1)
++echo "Fixing glibc modulemap"
++fix_glibc_modulemap "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/lib/swift/linux/x86_64/glibc.modulemap"
++fix_glibc_modulemap "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$linux_sdk_name/usr/lib/swift/linux/x86_64/glibc.modulemap"
++
++# FIXME: This needs to use absolute pathes?!
++#        Hm, does Homebrew tell us the target prefix? We need to use this
++# FIXME: the -sdk seems like a bug? but required
++cat > "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/destination.json" <<EOF
++{
++    "version": 1,
++    "sdk": "${INSTALL_PREFIX}/${CROSS_TOOLCHAIN_NAME}/$linux_sdk_name",
++    "toolchain-bin-dir": "${INSTALL_PREFIX}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/bin",
++    "target": "x86_64-unknown-linux",
++    "extra-cc-flags": [
++        "-fPIC"
++    ],
++    "extra-swiftc-flags": [
++        "-use-ld=lld", 
++        "-tools-directory", "${INSTALL_PREFIX}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/bin",
++        "-sdk", "${INSTALL_PREFIX}/${CROSS_TOOLCHAIN_NAME}/$linux_sdk_name"
++    ],
++    "extra-cpp-flags": [
++        "-lstdc++"
++    ]
++}
++EOF
++
++echo "done:"
++echo "  ${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}"
+diff -ruN empty/packagelist.make patched/packagelist.make
+--- empty/packagelist.make	1970-01-01 01:00:00.000000000 +0100
++++ patched/packagelist.make	2020-08-07 15:19:44.000000000 +0200
+@@ -0,0 +1,45 @@
++# packagelist.make
++#
++# Created by Helge Heß
++# Copyright © 2020 ZeeZide GmbH. All rights reserved.
++#
++# OK, the `packages_files` is essentially the primary.sqlite.gz I suppose.
++# Using this we could avoid the hardcoding of the package hashes:
++
++# "${ALX_BLOBSTORE_URL}/d12a..1537ff7fb02e/glibc-devel-2.26-34.amzn2.x86_64.rpm"
++PACKAGE_NAMES = \
++  10ba20673d3b4ea230ca095140b418f8cdc694b90b0e8021ff1eaa5d01e674ae/gcc-7.3.1-6.amzn2.0.4.x86_64.rpm \
++  74faca4ac8746c6369c6a701ca4f54e41bff4ce57c344a556042525a841d9046/gcc-c++-7.3.1-6.amzn2.0.4.x86_64.rpm \
++  94a0c31b245df60e9332606b2900d5620d0a6e32f769bd7bfde56bcc7721b1d4/libgcc-7.3.1-6.amzn2.0.4.x86_64.rpm \
++  7d952d019da52d2a612046739c84e0133e0aa83cd82317e0f77a15886ca7aed7/glibc-2.26-34.amzn2.x86_64.rpm \
++  a63e42333f4e0b51ff0b184024a6b9b3ccba204924d4f3098e0f3205c465442f/glibc-static-2.26-34.amzn2.x86_64.rpm \
++  d12adfb5d14224e877d39269007e9ac8261a63fd1f0964f46b241537ff7fb02e/glibc-devel-2.26-34.amzn2.x86_64.rpm \
++  9749958937f840aa39299675adf81709e21c6e6bde7fcbe771ffa70abaececbd/glibc-headers-2.26-34.amzn2.x86_64.rpm \
++  0a7b938a7b93ef8c955488bc0d7f4c26af8616de0297db55e670782f9472c77d/kernel-headers-4.14.181-140.257.amzn2.x86_64.rpm \
++  69936fb4faa47c5327655623e1fca06a73fe61a99be6b7a95b676a6f9de18030/libicu-50.2-4.amzn2.x86_64.rpm \
++  bbc96b51ef992c624a400d180c6dc3f8a3216d757abe8aecf71a22dff7afdda0/libicu-devel-50.2-4.amzn2.x86_64.rpm \
++  0c543bfd8a78923dd79908e19893a91172de4e484532dbb4919b48aa1cb9c2f2/zlib-devel-1.2.7-18.amzn2.x86_64.rpm \
++  8668d2f381ac2051c87538207711fe946fd56f301d22b1c6f7dc78c387245022/libuuid-2.30.2-2.amzn2.0.4.x86_64.rpm \
++  64606879fc06aa733427c5e8d21439a859f6e05e091b51aed5e13a54a3e32895/libuuid-devel-2.30.2-2.amzn2.0.4.x86_64.rpm \
++  552446b5e94791151e911a0340c2ff29884a568e7a9a06ace9e92e980207c2c1/libedit-devel-3.0-12.20121213cvs.amzn2.0.2.x86_64.rpm \
++  3cc0779d8b962927ee741496bdfe43dacaae7cb54b15a30ea4fb8360b7c84627/libxml2-static-2.9.1-6.amzn2.3.3.x86_64.rpm \
++  591d7fa97b6c532202896317103f97e9e80d65904e837d1c2918dc22a683c4d4/libxml2-devel-2.9.1-6.amzn2.3.3.x86_64.rpm \
++  4e4cd21b65d516bc7165fda727fba148251d98be0d235cf35a0d71bb9ea9658d/sqlite-devel-3.7.17-8.amzn2.1.1.x86_64.rpm \
++  2f8e739e42c8dc38f0399c807bbaa33388ba38a33811fb1bf81fea6cabfe85fc/python-devel-2.7.18-1.amzn2.x86_64.rpm \
++  5bb9331e9b5ef78c12acb5df083a64e4d429e0dbca8b06e170c01b8727c085f3/ncurses-static-6.0-8.20170212.amzn2.1.3.x86_64.rpm \
++  d9b6984d0bd7a63ac626d7884030e1da76b3142ac4822087bd7ea6ce719fa989/ncurses-devel-6.0-8.20170212.amzn2.1.3.x86_64.rpm \
++  63d1cda56c322b12f042e3434fbfe0d78cae4ebe7465e09d225098589d0ce4c0/libcurl-devel-7.61.1-12.amzn2.0.1.x86_64.rpm \
++  a7bf3d32ca223571a69330097cb53d86187d5b4f5e5643a1be76b1b73061dadb/openssl-static-1.0.2k-19.amzn2.0.3.x86_64.rpm \
++  b4faa62839191a47bfdca65bc8d51dc657ccfd260dc80e1851e7dabcf9aafd17/openssl-devel-1.0.2k-19.amzn2.0.3.x86_64.rpm \
++  2b013e46aa8367a842bd475f21cebee3477f5b2b56ee0c38652b8631b601be68/tzdata-2019c-1.amzn2.noarch.rpm \
++  e7eb8fbe56e6bdcead90457638f3ed5d476e461605e9e517b81de2aa4383ea83/libtool-2.4.2-22.2.amzn2.0.2.x86_64.rpm \
++  \
++  8e41c178b123127d858b111e79bcf4fb02eebc0c140c859b5017a800320965cc/lua-static-5.1.4-15.amzn2.0.2.x86_64.rpm \
++  7571938a62ff0561c2601547608e30bb219a883b646c2432ce56a57bacc96059/libpng-static-1.5.13-7.amzn2.0.2.x86_64.rpm \
++  dc296d587514b4b5e4a39f1da99e7b9b9cbf4cc68be8c1a88a05818c4707f0d1/libtiff-static-4.0.3-32.amzn2.x86_64.rpm \
++  e5391b3c3220bd4c02fcc451f24480d2a1c594ec7f1383ad6ddd1d5c6d0dcb85/libuv-static-1.23.2-1.amzn2.0.2.x86_64.rpm \
++  d50cf7ce779436c187d5f0ac296c53a8c57d111e63484bea87a62dde1bb28f84/lz4-static-1.7.5-2.amzn2.0.1.x86_64.rpm \
++  285504b02bdc1bb6bcad856f0b01da877835209f0bd35d4666773c77e3f85f87/pcre2-static-10.23-2.amzn2.0.2.x86_64.rpm \
++  560cc04a2033747250c9c138a3694ead0fcae4a98dc856894f4205be9df863c4/popt-static-1.13-16.amzn2.0.2.x86_64.rpm \
++  e694b8b1c2d5d63ce060954582d218dbe03930179d83edf96858e3b1e12a8f64/postgresql-static-9.2.24-1.amzn2.0.1.x86_64.rpm \
++  304ccb92cdf992357a870a1a7f3a5ecf278dbae7ca18aa53c5b33825fd528532/zlib-static-1.2.7-18.amzn2.x86_64.rpm
+diff -ruN empty/retrieve-sdk-packages.sh patched/retrieve-sdk-packages.sh
+--- empty/retrieve-sdk-packages.sh	1970-01-01 01:00:00.000000000 +0100
++++ patched/retrieve-sdk-packages.sh	2020-08-07 14:59:26.000000000 +0200
+@@ -0,0 +1,159 @@
++#!/bin/bash
++#
++# Based on
++#     - https://github.com/apple/swift-package-manager/blob/master/Utilities/build_ubuntu_cross_compilation_toolchain
++
++# by Johannes Weiß
++# Adjustments by Helge Heß <me@helgehess.eu>
++
++# This script fetches Debian packages from the upstream Linux distribution.
++# Arguments: Package names
++
++BUILD_DIR=${PWD}/.build
++FETCH_DIR=${PWD}/.fetch
++TARGET_ARCH=${TARGET_ARCH:=x86_64}
++LINUX_TARGET_TRIPLE="${TARGET_ARCH}-linux-gnu"
++TARGET_PLATFORM=${TARGET_PLATFORM:=amazonlinux2}
++TARGET_SDK_NAME=${TARGET_SDK_NAME:="${TARGET_ARCH}-${TARGET_PLATFORM}.sdk"}
++
++ALX_awsdomain=amazonaws.com
++ALX_awsregion=default
++ALX_product=core
++ALX_target=latest
++ALX_basearch=${TARGET_ARCH}
++ALX_releasever=2
++ALX_CORE_MIRROR_LIST=${ALX_CORE_MIRROR_LIST:="http://amazonlinux.${ALX_awsregion}.${ALX_awsdomain}/${ALX_releasever}/${ALX_product}/${ALX_target}/${ALX_basearch}/mirror.list"}
++ALX_BLOBSTORE_URL=${ALX_BLOBSTORE_URL:="https://cdn.amazonlinux.com/blobstore"}
++
++#APT_REPOSITORY_URL=${APT_REPOSITORY_URL:="http://gb.archive.ubuntu.com/ubuntu"}
++#APT_PACKAGES_FILE_URL=${APT_PACKAGES_FILE_URL:="${APT_REPOSITORY_URL}/dists/xenial/main/binary-amd64/Packages.gz"}
++
++IFS=', ' read -r -a pkg_names <<< "$1"
++
++set -e
++
++export PATH="/bin:/usr/bin"
++
++# set -xv
++
++
++# ******************* Helper Functions *****************************
++
++# url
++function download_stdout() {
++    curl --fail -s "$1"
++}
++
++# url, key
++function download_with_cache() {
++    mkdir -p "${FETCH_DIR}"
++    local out
++    out="${FETCH_DIR}/$2"
++    if [[ ! -f "$out" ]]; then
++      curl --fail -s -o "$out" "$1"
++    fi
++    echo "$out"
++}
++
++
++# dst, file
++function unpack_rpm() {
++    local tmp
++    tmp=$(mktemp -d /tmp/.unpack_rpm_XXXXXX)
++    (
++      cd "$tmp"
++      tar -C "$1" -xf $2
++    )
++    rm -rf "$tmp"
++}
++# dst, file
++function unpack_deb() {
++    local tmp
++    tmp=$(mktemp -d /tmp/.unpack_deb_XXXXXX)
++    (
++    cd "$tmp"
++    ar -x "$2"
++    tar -C "$1" -xf data.tar.*
++    )
++    rm -rf "$tmp"
++}
++
++# dst, file
++function unpack() {
++    ext=${2##*.}
++    "unpack_$ext" "$@"
++}
++
++
++# ******************* Switch to target directory *******************
++
++rm -rf   "${BUILD_DIR}/${TARGET_SDK_NAME}"
++mkdir -p "${BUILD_DIR}/${TARGET_SDK_NAME}"
++
++pkgs=()
++
++if [[ "x${APT_REPOSITORY_URL}" != "x" ]]; then
++  echo "Fetching APT download URLs for packages ..."
++  # This is downloading the packages in `pkg_names`,
++  # first ist fetchs the packages file.
++  # weissi: Oopsie, this is slow but seemingly fast enough :)
++  while read -r line; do
++      for pkg_name in "${pkg_names[@]}"; do
++          if [[ "$line" =~ ^Filename:\ (.*\/([^/_]+)_.*$) ]]; then
++              # echo "${BASH_REMATCH[2]}"
++              if [[ "${BASH_REMATCH[2]}" == "$pkg_name" ]]; then
++                  new_pkg="${APT_REPOSITORY_URL}/${BASH_REMATCH[1]}"
++                  pkgs+=( "$new_pkg" )
++                  echo "- will download $new_pkg"
++              fi
++          fi
++      done
++  done < <(download_stdout "$APT_PACKAGES_FILE_URL" | gunzip -d -c | grep ^Filename:)
++elif [[ "x${ALX_BLOBSTORE_URL}" != "x" ]]; then
++  # FIXME: Similar to APT this should retrieve the YUM primary.sqlite3 and
++  #        extract the desired URLs.
++  for pkg_name in "${pkg_names[@]}"; do
++    #ncurses-devel-6.0-8.20170212.amzn2.1.3.x86_64.rpm
++    escaped=$(echo "${pkg_name}" | sed "s|\+|\%2B|g")
++    new_pkg="${ALX_BLOBSTORE_URL}/${escaped}"
++    pkgs+=( "$new_pkg" )
++    echo "- will download $new_pkg"
++  done
++else
++  echo "No package web location?"
++fi
++
++echo "Download and unpack packages into ${BUILD_DIR}/${TARGET_SDK_NAME} ..."
++# Loop over the packages we want to fetch, and unpack them
++tmp=$(mktemp -d "${BUILD_DIR}/tmp_pkgs_XXXXXX")
++(
++cd "$tmp"
++for f in "${pkgs[@]}"; do
++    name="$(basename "$f")"
++    echo "  downloading: $name"
++    archive="$(download_with_cache "$f" "$name")"
++    if [[ -f "$archive" ]]; then
++      unpack "${BUILD_DIR}/${TARGET_SDK_NAME}" "$archive"
++    else
++      echo "Failed to download: $name $f"
++      exit 49
++    fi
++done
++)
++rm -rf "$tmp"
++
++echo "Fixing absolute links in ${BUILD_DIR}/${TARGET_SDK_NAME} ..."
++(
++cd $BUILD_DIR
++
++# fix absolute symlinks
++find "$TARGET_SDK_NAME" -type l | while read -r line; do
++    dst=$(readlink "$line")
++    if [[ "${dst:0:1}" = / ]]; then
++        rm "$line"
++        fixedlink=$(echo "./$(dirname "${line#${TARGET_SDK_NAME}/}")" | sed 's:/[^/]*:/..:g')"${dst}"
++        echo ln -s "${fixedlink#./}" "${line#./}"
++        ln -s "${fixedlink#./}" "${line#./}"
++    fi
++done
++)
