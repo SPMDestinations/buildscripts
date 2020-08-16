@@ -5,25 +5,40 @@
 
 # This is a Makefile variant for direct consumption. Plus some extra stuff
 # for testing purposes.
-# Ubuntu version
+# AmazonLinux 2 version
 
 prefix=/usr/local
 # This is required because we need to hardcode the destination.json to the
 # actual location.
 ACTUAL_DESTINATION_PREFIX=/usr/local
 
+# https://swift.org/builds/development/amazonlinux2/swift-DEVELOPMENT-SNAPSHOT-2020-08-04-a/swift-DEVELOPMENT-SNAPSHOT-2020-08-04-a-amazonlinux2.tar.gz
+# https://swift.org/builds/swift-5.3-branch/amazonlinux2/swift-5.3-DEVELOPMENT-SNAPSHOT-2020-08-15-a/swift-5.3-DEVELOPMENT-SNAPSHOT-2020-08-15-a-amazonlinux2.tar.gz
+
 VERSION=5.3
-BRANCH=swift-$(VERSION)-branch
-SNAPSHOT=DEVELOPMENT-SNAPSHOT-2020-07-31-a
+BRANCH=development
+SNAPSHOT=SNAPSHOT-2020-08-15-a
+HOST_VERSION=$(VERSION)
+TARBALL_VERSION=DEVELOPMENT
+#VERSION=5.3
+#BRANCH=swift-$(VERSION)-branch
+#SNAPSHOT=DEVELOPMENT-SNAPSHOT-2020-07-31-a
+#HOST_VERSION=$(VERSION)
+#TARBALL_VERSION=$(VERSION)
 #VERSION=5.2.4
 #BRANCH=swift-$(VERSION)-release
 #SNAPSHOT=RELEASE
+#HOST_VERSION=5.2
+#TARBALL_VERSION=$(VERSION)
 
 ARCH=x86_64
 TARGET=$(ARCH)-unknown-linux
 LINUX_TARGET_TRIPLE=$(ARCH)-linux-gnu
-PLATFORM=ubuntu16.04
-PACKAGE_URL=https://swift.org/builds/$(BRANCH)/$(subst .,,$(PLATFORM))/swift-$(VERSION)-$(SNAPSHOT)/swift-$(VERSION)-$(SNAPSHOT)-$(PLATFORM).tar.gz
+PLATFORM=amazonlinux2
+PACKAGE_URL=https://swift.org/builds/$(BRANCH)/$(subst .,,$(PLATFORM))/swift-$(TARBALL_VERSION)-$(SNAPSHOT)/swift-$(TARBALL_VERSION)-$(SNAPSHOT)-$(PLATFORM).tar.gz
+
+HOST_SWIFT_TOOLCHAIN=/usr/local/lib/swift/xctoolchains/$(ARCH)-apple-darwin/$(HOST_VERSION)-current/swift.xctoolchain
+
 
 BUILD_DIR=$(PWD)/.build
 FETCH_DIR=$(PWD)/.fetch
@@ -34,10 +49,20 @@ DESTDIR_PREFIX=$(prefix)/lib/swift/dst/x86_64-unknown-linux/
 PACKAGE_FETCH_FILENAME=swift-$(VERSION)-$(PLATFORM).tar.gz
 PACKAGE_FETCH_FILE=$(FETCH_DIR)/$(PACKAGE_FETCH_FILENAME)
 
-APT_DISTRIBUTION_NAME=xenial
-APT_PLATFORM=amd64
-APT_REPOSITORY_URL=http://de.archive.ubuntu.com/ubuntu
-APT_PACKAGES_FILE_URL=$(APT_REPOSITORY_URL)/dists/$(APT_DISTRIBUTION_NAME)/main/binary-$(APT_PLATFORM)/Packages.gz
+#APT_DISTRIBUTION_NAME=xenial
+#APT_PLATFORM=amd64
+#APT_REPOSITORY_URL=http://de.archive.ubuntu.com/ubuntu
+#APT_PACKAGES_FILE_URL=$(APT_REPOSITORY_URL)/dists/$(APT_DISTRIBUTION_NAME)/main/binary-$(APT_PLATFORM)/Packages.gz
+
+ALX_awsdomain=amazonaws.com
+ALX_awsregion=default
+ALX_product=core
+ALX_target=latest
+ALX_basearch=$(ARCH)
+ALX_releasever=2
+ALX_CORE_MIRROR_LIST="http://amazonlinux.${ALX_awsregion}.${ALX_awsdomain}/${ALX_releasever}/${ALX_product}/${ALX_target}/${ALX_basearch}/mirror.list"
+ALX_BLOBSTORE_URL="https://cdn.amazonlinux.com/blobstore"
+
 
 MKDIR=mkdir
 CP=cp
@@ -46,7 +71,8 @@ RM_RF=rm -rf
 PGK_FETCHER=curl -L
 DIRDIFF=diff -ruN
 
-all: patch-5.3/build.patch
+all: patch-5.2/build.patch patch-5.3/build.patch
+#all: local-build
 	
 help:
 	echo $(PACKAGE_URL)
@@ -73,6 +99,21 @@ distclean: clean
 	
 # patches
 
+swift-5.2-patch: patch-5.2/build.patch
+	
+patch-5.2/build.patch: Makefile retrieve-sdk-packages.sh build-toolchain.sh patch-5.2/Makefile
+	$(RM_RF) $@
+	$(RM_RF) $(PATCH_DIR)
+	$(MKDIR) -p $(PATCH_DIR)/empty
+	$(MKDIR) -p $(PATCH_DIR)/patched
+	$(CP) -ac retrieve-sdk-packages.sh $(PATCH_DIR)/patched/
+	$(CP) -ac packagelist.make         $(PATCH_DIR)/patched/
+	$(CP) -ac build-toolchain.sh       $(PATCH_DIR)/patched/
+	$(CP) -ac patch-5.2/Makefile       $(PATCH_DIR)/patched/
+	(cd $(PATCH_DIR); $(DIRDIFF) empty patched > $(PWD)/$@ ; [ $$? -eq 1 ])
+	cat patch-5.2/build.patch | shasum -a 256
+
+
 swift-5.3-patch: patch-5.3/build.patch
 	
 patch-5.3/build.patch: Makefile retrieve-sdk-packages.sh build-toolchain.sh patch-5.3/Makefile
@@ -81,6 +122,7 @@ patch-5.3/build.patch: Makefile retrieve-sdk-packages.sh build-toolchain.sh patc
 	$(MKDIR) -p $(PATCH_DIR)/empty
 	$(MKDIR) -p $(PATCH_DIR)/patched
 	$(CP) -ac retrieve-sdk-packages.sh $(PATCH_DIR)/patched/
+	$(CP) -ac packagelist.make         $(PATCH_DIR)/patched/
 	$(CP) -ac build-toolchain.sh       $(PATCH_DIR)/patched/
 	$(CP) -ac patch-5.3/Makefile       $(PATCH_DIR)/patched/
 	(cd $(PATCH_DIR); $(DIRDIFF) empty patched > $(PWD)/$@ ; [ $$? -eq 1 ])
@@ -88,12 +130,7 @@ patch-5.3/build.patch: Makefile retrieve-sdk-packages.sh build-toolchain.sh patc
 
 # package download
 
-PACKAGE_NAMES = \
-	libc6-dev linux-libc-dev libicu55 libgcc-5-dev libicu-dev \
-	libc6 libgcc1 libstdc++-5-dev libstdc++6 zlib1g-dev \
-	libpq5 libpq-dev libedit2 libedit-dev libsqlite3-dev \
-	libxml2 libxml2-dev libncurses5 libncurses5-dev \
-	libcurl4 libcurl4-openssl-dev libssl1.1 libssl-dev
+include packagelist.make
 
 retrieve-packages:
 	BUILD_DIR=$(BUILD_DIR) FETCH_DIR=$(FETCH_DIR)	\
@@ -101,15 +138,22 @@ retrieve-packages:
 	LINUX_TARGET_TRIPLE=$(LINUX_TARGET_TRIPLE)	\
 	TARGET_PLATFORM=$(PLATFORM)			\
 	TARGET_SDK_NAME=$(ARCH)-$(PLATFORM).sdk 	\
-	APT_REPOSITORY_URL=$(APT_REPOSITORY_URL)	\
-	APT_PACKAGES_FILE_URL=$(APT_PACKAGES_FILE_URL)	\
+	ALX_CORE_MIRROR_LIST=$(ALX_CORE_MIRROR_LIST)	\
+	ALX_BLOBSTORE_URL=$(ALX_BLOBSTORE_URL)		\
 	./retrieve-sdk-packages.sh "$(PACKAGE_NAMES)"
 
 
 # toolchain builder
 
 build-toolchain: $(PACKAGE_FETCH_FILE)
-	SWIFT_VERSION=$(VERSION) ./build-toolchain.sh $(PWD)/.fetch/swift-$(VERSION)-$(PLATFORM).tar.gz
+	SWIFT_VERSION=$(VERSION)			\
+	HOST_SWIFT_TOOLCHAIN=$(HOST_SWIFT_TOOLCHAIN)	\
+	TARGET_ARCH=$(ARCH)				\
+	TARGET_PLATFORM=$(PLATFORM)			\
+	./build-toolchain.sh $(PWD)/.fetch/swift-$(VERSION)-$(PLATFORM).tar.gz
+
+
+# build test app
 
 testbuild:
 	rm -rf my-test-app
@@ -119,21 +163,21 @@ testbuild:
 test-rebuild:
 	cd my-test-app && swift build --destination $(BUILD_DIR)/swift-$(VERSION)-$(PLATFORM).xtoolchain/destination.json
 
-DOCKER_IMAGE=swiftlang/swift:nightly-5.3-xenial
+DOCKER_IMAGE=swift:5.2.4-amazonlinux2
 
 # ld.so doesn't seem to be setup properly, ld.so.conf.d doesn't include
 # the `/usr/lib/swift/linux`
 testbuild-run:
-	docker run --rm -t 		\
-		--name test-x-build \
+	docker run --rm -t 			\
+		--name test-x-build		\
 		--volume "$(PWD)/my-test-app/.build/debug:/run" \
 		--workdir "/run" 		\
 		$(DOCKER_IMAGE) 		\
 		bash -c "LD_LIBRARY_PATH=/usr/lib/swift/linux ./my-test-app"
 
 testbuild-bash:
-	docker run --rm -it 		\
-		--name test-x-build \
+	docker run --rm -it 			\
+		--name test-x-build 		\
 		--volume "$(PWD)/my-test-app/.build/debug:/run" \
 		--workdir "/run" 		\
 		$(DOCKER_IMAGE) 		\
