@@ -1,6 +1,6 @@
 diff -ruN empty/Makefile patched/Makefile
 --- empty/Makefile	1970-01-01 01:00:00.000000000 +0100
-+++ patched/Makefile	2020-08-07 17:47:06.000000000 +0200
++++ patched/Makefile	2020-08-16 15:54:43.000000000 +0200
 @@ -0,0 +1,86 @@
 +# Makefile
 +#
@@ -90,7 +90,7 @@ diff -ruN empty/Makefile patched/Makefile
 +	./build-toolchain.sh
 diff -ruN empty/build-toolchain.sh patched/build-toolchain.sh
 --- empty/build-toolchain.sh	1970-01-01 01:00:00.000000000 +0100
-+++ patched/build-toolchain.sh	2020-08-06 01:35:23.000000000 +0200
++++ patched/build-toolchain.sh	2020-08-16 15:54:43.000000000 +0200
 @@ -0,0 +1,272 @@
 +#!/bin/bash
 +#
@@ -366,8 +366,8 @@ diff -ruN empty/build-toolchain.sh patched/build-toolchain.sh
 +echo "  ${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}"
 diff -ruN empty/packagelist.make patched/packagelist.make
 --- empty/packagelist.make	1970-01-01 01:00:00.000000000 +0100
-+++ patched/packagelist.make	2020-08-07 15:19:44.000000000 +0200
-@@ -0,0 +1,45 @@
++++ patched/packagelist.make	2020-09-11 15:46:57.000000000 +0200
+@@ -0,0 +1,67 @@
 +# packagelist.make
 +#
 +# Created by Helge Heß
@@ -404,18 +404,40 @@ diff -ruN empty/packagelist.make patched/packagelist.make
 +  2b013e46aa8367a842bd475f21cebee3477f5b2b56ee0c38652b8631b601be68/tzdata-2019c-1.amzn2.noarch.rpm \
 +  e7eb8fbe56e6bdcead90457638f3ed5d476e461605e9e517b81de2aa4383ea83/libtool-2.4.2-22.2.amzn2.0.2.x86_64.rpm \
 +  \
++  d913d74a0fcc373aec28ad97e14af316a6b39cf57420fd1c7725328e8b0a97fe/lua-devel-5.1.4-15.amzn2.0.2.x86_64.rpm \
 +  8e41c178b123127d858b111e79bcf4fb02eebc0c140c859b5017a800320965cc/lua-static-5.1.4-15.amzn2.0.2.x86_64.rpm \
++  b39ac104463916a12df05b7a9c1a2279c21e1825ce1391199120ecefe8c2bcc4/libpng-devel-1.5.13-7.amzn2.0.2.x86_64.rpm \
 +  7571938a62ff0561c2601547608e30bb219a883b646c2432ce56a57bacc96059/libpng-static-1.5.13-7.amzn2.0.2.x86_64.rpm \
++  04f6482c2e6e40120e41d46e03d113666fe2ad8b61642e66546f4826969a7d0f/libtiff-devel-4.0.3-32.amzn2.x86_64.rpm \
 +  dc296d587514b4b5e4a39f1da99e7b9b9cbf4cc68be8c1a88a05818c4707f0d1/libtiff-static-4.0.3-32.amzn2.x86_64.rpm \
++  89b1d2374971471b482ff30dd9c111234d9eeef4d44c7600a8464a6c919b53a2/libuv-devel-1.23.2-1.amzn2.0.2.x86_64.rpm \
 +  e5391b3c3220bd4c02fcc451f24480d2a1c594ec7f1383ad6ddd1d5c6d0dcb85/libuv-static-1.23.2-1.amzn2.0.2.x86_64.rpm \
++  5d534056ea5fecfe39c173205f4588c539558a377b51d6cb25302775b443c4c0/lz4-devel-1.7.5-2.amzn2.0.1.x86_64.rpm \
 +  d50cf7ce779436c187d5f0ac296c53a8c57d111e63484bea87a62dde1bb28f84/lz4-static-1.7.5-2.amzn2.0.1.x86_64.rpm \
++  1d00482f25396ca9c785f1304d1b35b09183945f19431f32582408494624114b/pcre2-devel-10.23-2.amzn2.0.2.x86_64.rpm \
 +  285504b02bdc1bb6bcad856f0b01da877835209f0bd35d4666773c77e3f85f87/pcre2-static-10.23-2.amzn2.0.2.x86_64.rpm \
++  ebe22f57315004e59a89c8b5603d755e84de3cc6575d40464ca163b7ea926a25/popt-devel-1.13-16.amzn2.0.2.x86_64.rpm \
 +  560cc04a2033747250c9c138a3694ead0fcae4a98dc856894f4205be9df863c4/popt-static-1.13-16.amzn2.0.2.x86_64.rpm \
++  454183d5084613c7b49f129938ee217a88b4257dee325cc20f498b026cd02fd1/postgresql-devel-9.2.24-1.amzn2.0.1.x86_64.rpm \
 +  e694b8b1c2d5d63ce060954582d218dbe03930179d83edf96858e3b1e12a8f64/postgresql-static-9.2.24-1.amzn2.0.1.x86_64.rpm \
-+  304ccb92cdf992357a870a1a7f3a5ecf278dbae7ca18aa53c5b33825fd528532/zlib-static-1.2.7-18.amzn2.x86_64.rpm
++  304ccb92cdf992357a870a1a7f3a5ecf278dbae7ca18aa53c5b33825fd528532/zlib-static-1.2.7-18.amzn2.x86_64.rpm \
++  \
++  04aeb5e6263344a6cb9ea03969d46b0bf39d09ba36f719f2a7bc1a53a781547e/libxml2-2.9.1-6.amzn2.3.3.x86_64.rpm \
++  46f8ee58ec71659c44991499ef8b863471aed2085b460165e198645d07b4154a/sqlite-3.7.17-8.amzn2.1.1.x86_64.rpm \
++  927eb23f8546ee3b9e1805d20448d427bd77bf70f0728d3f38a7461d964aadd7/libedit-3.0-12.20121213cvs.amzn2.0.2.x86_64.rpm \
++  675a891c5b337ffe0892af968cbf9051f77152dba3204b8693f5fc1a1f1e485d/ncurses-libs-6.0-8.20170212.amzn2.1.3.x86_64.rpm \
++  1a42f938406a31c69a78e315b2183bb76aec541ff3802b03522f006075d29eac/libcurl-7.61.1-12.amzn2.0.1.x86_64.rpm \
++  f80d62b913329289645db678a59b8449ded30d50edb46086d664c2a02497a994/openssl-libs-1.0.2k-19.amzn2.0.3.x86_64.rpm \
++  d95ce0cfbbedd925b87fdf5526a0c833e6020f8c02dde2f2ec7cd1e0c53b487e/lua-5.1.4-15.amzn2.0.2.x86_64.rpm \
++  bed66a9029d7c43596a144d995284f471272f9f9696dd6309a53a99fbacb936a/libpng-1.5.13-7.amzn2.0.2.x86_64.rpm \
++  e6828092fb13e76eaec96ea6c9ee4c182306a207e01c733948a92e8b123f2a47/lz4-1.7.5-2.amzn2.0.1.x86_64.rpm \
++  a0d28315c2745ebdd52471e6d8d16f46463e4a153c747ec93d2bb90af10cf290/pcre2-10.23-2.amzn2.0.2.x86_64.rpm \
++  b7fd0bc06df55b7443fa192a11d5e2f1f079100a070fdeee14a6d076dd1f8826/popt-1.13-16.amzn2.0.2.x86_64.rpm \
++  eb468bebb2e6e4d17c5cc0aee942856f3230e0d6088573c93a559f8f8cbf1a10/postgresql-libs-9.2.24-1.amzn2.0.1.x86_64.rpm \
++  3488bc821b35408aa1d27bb6eb1287cffaa8de9b8eb12f06b08ab2553d68e6f5/zlib-1.2.7-18.amzn2.x86_64.rpm
 diff -ruN empty/retrieve-sdk-packages.sh patched/retrieve-sdk-packages.sh
 --- empty/retrieve-sdk-packages.sh	1970-01-01 01:00:00.000000000 +0100
-+++ patched/retrieve-sdk-packages.sh	2020-08-07 14:59:26.000000000 +0200
++++ patched/retrieve-sdk-packages.sh	2020-08-16 15:54:43.000000000 +0200
 @@ -0,0 +1,159 @@
 +#!/bin/bash
 +#

@@ -101,7 +101,7 @@ distclean: clean
 
 swift-5.2-patch: patch-5.2/build.patch
 	
-patch-5.2/build.patch: Makefile retrieve-sdk-packages.sh build-toolchain.sh patch-5.2/Makefile
+patch-5.2/build.patch: packagelist.make Makefile retrieve-sdk-packages.sh build-toolchain.sh patch-5.2/Makefile
 	$(RM_RF) $@
 	$(RM_RF) $(PATCH_DIR)
 	$(MKDIR) -p $(PATCH_DIR)/empty
@@ -116,7 +116,7 @@ patch-5.2/build.patch: Makefile retrieve-sdk-packages.sh build-toolchain.sh patc
 
 swift-5.3-patch: patch-5.3/build.patch
 	
-patch-5.3/build.patch: Makefile retrieve-sdk-packages.sh build-toolchain.sh patch-5.3/Makefile
+patch-5.3/build.patch: packagelist.make Makefile retrieve-sdk-packages.sh build-toolchain.sh patch-5.3/Makefile
 	$(RM_RF) $@
 	$(RM_RF) $(PATCH_DIR)
 	$(MKDIR) -p $(PATCH_DIR)/empty
