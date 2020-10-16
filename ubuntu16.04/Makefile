@@ -5,6 +5,7 @@
 
 # This is a Makefile variant for direct consumption. Plus some extra stuff
 # for testing purposes.
+# Ubuntu version
 
 prefix=/usr/local
 # This is required because we need to hardcode the destination.json to the

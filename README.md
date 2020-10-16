@@ -14,7 +14,7 @@ hop over to the [homebrew-tap](https://github.com/SPMDestinations/homebrew-tap).
 
 
 Many parts of those scripts built upon the
-[script](https://github.com/apple/swift-package-manager/blob/master/Utilities/build_ubuntu_cross_compilation_toolchain)
+[script](https://github.com/apple/swift-package-manager/blob/main/Utilities/build_ubuntu_cross_compilation_toolchain)
 by [Johannes Weiß](https://github.com/weissi).
 
 

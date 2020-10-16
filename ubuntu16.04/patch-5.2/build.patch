@@ -16,7 +16,7 @@ diff -ruN empty/Makefile patched/Makefile
 +# actual location.
 +ACTUAL_DESTINATION_PREFIX=/usr/local
 +
-+SWIFT_VERSION=5.3
++SWIFT_VERSION=5.2
 +
 +TARGET_ARCH=x86_64
 +TARGET_TRIPLE=$(TARGET_ARCH)-unknown-linux
