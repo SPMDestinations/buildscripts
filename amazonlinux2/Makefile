@@ -12,24 +12,20 @@ prefix=/usr/local
 # actual location.
 ACTUAL_DESTINATION_PREFIX=/usr/local
 
-# https://swift.org/builds/development/amazonlinux2/swift-DEVELOPMENT-SNAPSHOT-2020-08-04-a/swift-DEVELOPMENT-SNAPSHOT-2020-08-04-a-amazonlinux2.tar.gz
-# https://swift.org/builds/swift-5.3-branch/amazonlinux2/swift-5.3-DEVELOPMENT-SNAPSHOT-2020-08-15-a/swift-5.3-DEVELOPMENT-SNAPSHOT-2020-08-15-a-amazonlinux2.tar.gz
-
+# 5.3 release URL:
+# https://swift.org/builds/swift-5.3-release/amazonlinux2/swift-5.3-RELEASE/swift-5.3-RELEASE-amazonlinux2.tar.gz
 VERSION=5.3
-BRANCH=development
-SNAPSHOT=SNAPSHOT-2020-08-15-a
+BRANCH=swift-$(VERSION)-release
+SNAPSHOT=RELEASE
 HOST_VERSION=$(VERSION)
-TARBALL_VERSION=DEVELOPMENT
-#VERSION=5.3
-#BRANCH=swift-$(VERSION)-branch
-#SNAPSHOT=DEVELOPMENT-SNAPSHOT-2020-07-31-a
-#HOST_VERSION=$(VERSION)
-#TARBALL_VERSION=$(VERSION)
-#VERSION=5.2.4
-#BRANCH=swift-$(VERSION)-release
-#SNAPSHOT=RELEASE
-#HOST_VERSION=5.2
-#TARBALL_VERSION=$(VERSION)
+TARBALL_VERSION=$(VERSION)
+
+# 5.3 dev URL:
+# https://swift.org/builds/swift-5.3-branch/amazonlinux2/swift-5.3-DEVELOPMENT-SNAPSHOT-2020-08-15-a/swift-5.3-DEVELOPMENT-SNAPSHOT-2020-08-15-a-amazonlinux2.tar.gz
+#BRANCH=development
+#SNAPSHOT=SNAPSHOT-2020-08-15-a
+#TARBALL_VERSION=DEVELOPMENT
+
 
 ARCH=x86_64
 TARGET=$(ARCH)-unknown-linux
@@ -68,22 +64,24 @@ MKDIR=mkdir
 CP=cp
 LN_S=ln -s
 RM_RF=rm -rf
-PGK_FETCHER=curl -L
+PGK_FETCHER=curl -L --fail --show-error
 DIRDIFF=diff -ruN
 
 all: patch-5.2/build.patch patch-5.3/build.patch
 #all: local-build
 	
 help:
-	echo $(PACKAGE_URL)
-	echo "make retrieve-packages"
-	echo "make build-toolchain"
-	echo "testbuild"
+	@echo $(PACKAGE_URL)
+	@echo "make retrieve-packages"
+	@echo "make build-toolchain"
+	@echo "testbuild"
 
 local-build: $(PACKAGE_FETCH_FILE) retrieve-packages build-toolchain
 
 $(PACKAGE_FETCH_FILE):
 	$(MKDIR) -p $(FETCH_DIR)
+	@echo "Fetching upstream package:"
+	@echo "  $(PACKAGE_URL)"
 	(if ! test -f $@; then $(PGK_FETCHER) -o $@ $(PACKAGE_URL); fi)
 
 install:
