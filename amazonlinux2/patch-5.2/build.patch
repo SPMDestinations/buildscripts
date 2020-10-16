@@ -95,7 +95,7 @@ diff -ruN empty/build-toolchain.sh patched/build-toolchain.sh
 +#!/bin/bash
 +#
 +# Based on
-+#     - https://github.com/apple/swift-package-manager/blob/master/Utilities/build_ubuntu_cross_compilation_toolchain
++#     - https://github.com/apple/swift-package-manager/blob/main/Utilities/build_ubuntu_cross_compilation_toolchain
 +
 +# by Johannes Weiß
 +# Adjustments by Helge Heß <me@helgehess.eu>
@@ -201,7 +201,7 @@ diff -ruN empty/build-toolchain.sh patched/build-toolchain.sh
 +fi
 +
 +# config
-+blocks_h_url="https://raw.githubusercontent.com/apple/swift-corelibs-libdispatch/master/src/BlocksRuntime/Block.h"
++blocks_h_url="https://raw.githubusercontent.com/apple/swift-corelibs-libdispatch/main/src/BlocksRuntime/Block.h"
 +
 +if ! test -d "${HOST_SWIFT_TOOLCHAIN}"; then
 +  echo "Missing host toolchain: ${HOST_SWIFT_TOOLCHAIN}"; exit 1
@@ -442,7 +442,7 @@ diff -ruN empty/retrieve-sdk-packages.sh patched/retrieve-sdk-packages.sh
 +#!/bin/bash
 +#
 +# Based on
-+#     - https://github.com/apple/swift-package-manager/blob/master/Utilities/build_ubuntu_cross_compilation_toolchain
++#     - https://github.com/apple/swift-package-manager/blob/main/Utilities/build_ubuntu_cross_compilation_toolchain
 +
 +# by Johannes Weiß
 +# Adjustments by Helge Heß <me@helgehess.eu>

@@ -1,7 +1,7 @@
 # Makefile
 #
 # Based on
-#     - https://github.com/apple/swift-package-manager/blob/master/Utilities/build_ubuntu_cross_compilation_toolchain
+#     - https://github.com/apple/swift-package-manager/blob/main/Utilities/build_ubuntu_cross_compilation_toolchain
 #
 # by Johannes Weiß
 # Adjustments by Helge Heß <me@helgehess.eu>

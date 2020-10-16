@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # Based on
-#     - https://github.com/apple/swift-package-manager/blob/master/Utilities/build_ubuntu_cross_compilation_toolchain
+#     - https://github.com/apple/swift-package-manager/blob/main/Utilities/build_ubuntu_cross_compilation_toolchain
 
 # by Johannes Weiß
 # Adjustments by Helge Heß <me@helgehess.eu>
@@ -96,7 +96,7 @@ if [[ "x$1" != "x" ]]; then
 fi
 
 # config
-blocks_h_url="https://raw.githubusercontent.com/apple/swift-corelibs-libdispatch/master/src/BlocksRuntime/Block.h"
+blocks_h_url="https://raw.githubusercontent.com/apple/swift-corelibs-libdispatch/main/src/BlocksRuntime/Block.h"
 
 if ! test -d "${HOST_SWIFT_TOOLCHAIN}"; then
   echo "Missing host toolchain: ${HOST_SWIFT_TOOLCHAIN}"; exit 1
