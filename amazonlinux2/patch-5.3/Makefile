@@ -10,6 +10,7 @@ prefix=/usr/local
 # This is required because we need to hardcode the destination.json to the
 # actual location.
 ACTUAL_DESTINATION_PREFIX=/usr/local
+SWIFT_LIB_DIR=$(ACTUAL_DESTINATION_PREFIX)/lib/swift
 
 VERSION=5.3
 HOST_VERSION=$(VERSION)
@@ -20,7 +21,7 @@ TARGET_TRIPLE=$(TARGET_ARCH)-unknown-linux
 LINUX_TARGET_TRIPLE=$(TARGET_ARCH)-linux-gnu
 PLATFORM=amazonlinux2
 
-HOST_SWIFT_TOOLCHAIN=/usr/local/lib/swift/xctoolchains/$(TARGET_ARCH)-apple-darwin/$(HOST_VERSION)-current/swift.xctoolchain
+HOST_SWIFT_TOOLCHAIN=$(SWIFT_LIB_DIR)/xctoolchains/$(TARGET_ARCH)-apple-darwin/$(HOST_VERSION)-current/swift.xctoolchain
 
 BUILD_DIR=$(PWD)/.build
 FETCH_DIR=$(PWD)/.fetch
@@ -62,7 +63,7 @@ distclean: clean
 	
 retrieve-packages:
 	BUILD_DIR=$(BUILD_DIR) FETCH_DIR=$(FETCH_DIR)	\
-	TARGET_ARCH=$(TARGET_ARCH)				\
+	TARGET_ARCH=$(TARGET_ARCH)			\
 	LINUX_TARGET_TRIPLE=$(LINUX_TARGET_TRIPLE)	\
 	TARGET_PLATFORM=$(PLATFORM)			\
 	TARGET_SDK_NAME=$(TARGET_ARCH)-$(PLATFORM).sdk 	\
@@ -75,7 +76,8 @@ retrieve-packages:
 
 # A different: the build-toolchain doesn't carry the parameter
 build-toolchain:
-	BUILD_DIR=$(BUILD_DIR) FETCH_DIR=$(FETCH_DIR)	\
+	BUILD_DIR=$(BUILD_DIR)				\
+	FETCH_DIR=$(FETCH_DIR)				\
 	SWIFT_VERSION=$(VERSION)			\
 	TARGET_ARCH=$(TARGET_ARCH)			\
 	TARGET_PLATFORM=$(PLATFORM)			\
@@ -83,4 +85,5 @@ build-toolchain:
 	CROSS_TOOLCHAIN_NAME=$(CROSS_TOOLCHAIN_NAME)	\
 	HOST_PLATFORM=$(uname -m)			\
 	INSTALL_PREFIX=$(INSTALL_PREFIX)		\
+	SWIFT_LIB_DIR=$(SWIFT_LIB_DIR)			\
 	./build-toolchain.sh

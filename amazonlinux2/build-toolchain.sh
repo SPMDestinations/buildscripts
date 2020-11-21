@@ -6,8 +6,6 @@
 # by Johannes Weiß
 # Adjustments by Helge Heß <me@helgehess.eu>
 
-# Usage: $0 dest ubuntu-swift-pkg
-
 set -e
 
 BUILD_DIR=${BUILD_DIR:=${PWD}/.build}
@@ -17,16 +15,19 @@ TARGET_ARCH=${TARGET_ARCH:=x86_64}
 TARGET_PLATFORM=${TARGET_PLATFORM:=ubuntu16.04}
 CROSS_TOOLCHAIN_NAME=${CROSS_TOOLCHAIN_NAME:=swift-${SWIFT_VERSION}-${TARGET_PLATFORM}.xtoolchain}
 HOST_PLATFORM=${HOST_PLATFORM:=x86_64}
+# FIXME: this should not be HOST_PLATFORM but HOST_TOOLCHAIN_BIN (e.g. "fat" instead of x86_64?)
 
 # must be specified, absolute URL:
 #   e.g. /usr/local/lib/swift/dst/${TARGET_ARCH}-unknown-linux}
 INSTALL_PREFIX=${INSTALL_PREFIX:=${BUILD_DIR}}
 
+SWIFT_LIB_DIR=${SWIFT_LIB_DIR:=/usr/local/lib/swift}
+
 # brew install swiftxcode/swiftxcode/swift-xctoolchain-5.2
 # brew install swiftxcode/swiftxcode/clang-llvm-bin-8
 # ./retrieve-sdk-packages.sh
-HOST_SWIFT_TOOLCHAIN=${HOST_SWIFT_TOOLCHAIN:=/usr/local/lib/swift/xctoolchains/${HOST_PLATFORM}-apple-darwin/${SWIFT_VERSION}-current/swift.xctoolchain}
-HOST_X_LLD=/usr/local/lib/swift/clang-llvm/${HOST_PLATFORM}-apple-darwin/8.0.0/bin/lld
+HOST_SWIFT_TOOLCHAIN=${HOST_SWIFT_TOOLCHAIN:=${SWIFT_LIB_DIR}/xctoolchains/${HOST_PLATFORM}-apple-darwin/${SWIFT_VERSION}-current/swift.xctoolchain}
+HOST_X_LLD=${SWIFT_LIB_DIR}/clang-llvm/${HOST_PLATFORM}-apple-darwin/8.0.0/bin/lld
 linux_sdk_name="${TARGET_ARCH}-${TARGET_PLATFORM}.sdk"
 LINUX_SDK="${BUILD_DIR}/${linux_sdk_name}"
 

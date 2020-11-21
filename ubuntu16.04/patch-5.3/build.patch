@@ -1,7 +1,7 @@
 diff -ruN empty/Makefile patched/Makefile
 --- empty/Makefile	1970-01-01 01:00:00.000000000 +0100
-+++ patched/Makefile	2020-08-03 16:12:05.000000000 +0200
-@@ -0,0 +1,88 @@
++++ patched/Makefile	2020-11-21 16:41:57.000000000 +0100
+@@ -0,0 +1,90 @@
 +# Makefile
 +#
 +# Created by Helge Heß
@@ -82,18 +82,20 @@ diff -ruN empty/Makefile patched/Makefile
 +# toolchain builder
 +
 +build-toolchain: $(PACKAGE_FETCH_FILE)
-+	BUILD_DIR=$(BUILD_DIR) FETCH_DIR=$(FETCH_DIR)	\
++	BUILD_DIR=$(BUILD_DIR) \
++	FETCH_DIR=$(FETCH_DIR)	\
 +	SWIFT_VERSION=$(SWIFT_VERSION) 			\
 +	TARGET_ARCH=$(TARGET_ARCH)			\
 +	TARGET_PLATFORM=$(PLATFORM)			\
 +	CROSS_TOOLCHAIN_NAME=$(CROSS_TOOLCHAIN_NAME)	\
 +	HOST_PLATFORM=$(uname -m)			\
 +	INSTALL_PREFIX=$(INSTALL_PREFIX)		\
++	SWIFT_LIB_DIR=$(SWIFT_LIB_DIR) \
 +	./build-toolchain.sh
 diff -ruN empty/build-toolchain.sh patched/build-toolchain.sh
 --- empty/build-toolchain.sh	1970-01-01 01:00:00.000000000 +0100
-+++ patched/build-toolchain.sh	2020-08-05 17:37:51.000000000 +0200
-@@ -0,0 +1,261 @@
++++ patched/build-toolchain.sh	2020-11-21 16:55:09.000000000 +0100
+@@ -0,0 +1,262 @@
 +#!/bin/bash
 +#
 +# Based on
@@ -101,8 +103,6 @@ diff -ruN empty/build-toolchain.sh patched/build-toolchain.sh
 +
 +# by Johannes Weiß
 +# Adjustments by Helge Heß <me@helgehess.eu>
-+
-+# Usage: $0 dest ubuntu-swift-pkg
 +
 +set -e
 +
@@ -113,16 +113,19 @@ diff -ruN empty/build-toolchain.sh patched/build-toolchain.sh
 +TARGET_PLATFORM=${TARGET_PLATFORM:=ubuntu16.04}
 +CROSS_TOOLCHAIN_NAME=${CROSS_TOOLCHAIN_NAME:=swift-${SWIFT_VERSION}-${TARGET_PLATFORM}.xtoolchain}
 +HOST_PLATFORM=${HOST_PLATFORM:=x86_64}
++# FIXME: this should not be HOST_PLATFORM but HOST_TOOLCHAIN_BIN (e.g. "fat" instead of x86_64?)
 +
 +# must be specified, absolute URL:
 +#   e.g. /usr/local/lib/swift/dst/${TARGET_ARCH}-unknown-linux}
 +INSTALL_PREFIX=${INSTALL_PREFIX:=${BUILD_DIR}}
 +
-+# brew install swiftxcode/swiftxcode/swift-xctoolchain-5.2
++SWIFT_LIB_DIR=${SWIFT_LIB_DIR:=/usr/local/lib/swift}
++
++# brew install swiftxcode/swiftxcode/swift-xctoolchain-5.3
 +# brew install swiftxcode/swiftxcode/clang-llvm-bin-8
 +# ./retrieve-sdk-packages.sh
-+HOST_SWIFT_TOOLCHAIN=/usr/local/lib/swift/xctoolchains/${HOST_PLATFORM}-apple-darwin/${SWIFT_VERSION}-current/swift.xctoolchain
-+HOST_X_LLD=/usr/local/lib/swift/clang-llvm/${HOST_PLATFORM}-apple-darwin/8.0.0/bin/lld
++HOST_SWIFT_TOOLCHAIN=${SWIFT_LIB_DIR}/xctoolchains/${HOST_PLATFORM}-apple-darwin/${SWIFT_VERSION}-current/swift.xctoolchain
++HOST_X_LLD=${SWIFT_LIB_DIR}/clang-llvm/${HOST_PLATFORM}-apple-darwin/8.0.0/bin/lld
 +linux_sdk_name="${TARGET_ARCH}-${TARGET_PLATFORM}.sdk"
 +LINUX_SDK="${BUILD_DIR}/${linux_sdk_name}"
 +
@@ -357,7 +360,7 @@ diff -ruN empty/build-toolchain.sh patched/build-toolchain.sh
 +echo "  ${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}"
 diff -ruN empty/retrieve-sdk-packages.sh patched/retrieve-sdk-packages.sh
 --- empty/retrieve-sdk-packages.sh	1970-01-01 01:00:00.000000000 +0100
-+++ patched/retrieve-sdk-packages.sh	2020-08-03 16:12:05.000000000 +0200
++++ patched/retrieve-sdk-packages.sh	2020-10-16 13:42:25.000000000 +0200
 @@ -0,0 +1,136 @@
 +#!/bin/bash
 +#
