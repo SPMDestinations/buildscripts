@@ -10,9 +10,9 @@ set -e
 
 BUILD_DIR=${BUILD_DIR:=${PWD}/.build}
 FETCH_DIR=${FETCH_DIR:=${PWD}/.fetch}
-SWIFT_VERSION=${SWIFT_VERSION:=5.2}
+SWIFT_VERSION=${SWIFT_VERSION:=5.3}
 TARGET_ARCH=${TARGET_ARCH:=x86_64}
-TARGET_PLATFORM=${TARGET_PLATFORM:=ubuntu16.04}
+TARGET_PLATFORM=${TARGET_PLATFORM:=ubuntu20.04}
 CROSS_TOOLCHAIN_NAME=${CROSS_TOOLCHAIN_NAME:=swift-${SWIFT_VERSION}-${TARGET_PLATFORM}.xtoolchain}
 HOST_PLATFORM=${HOST_PLATFORM:=x86_64}
 # FIXME: this should not be HOST_PLATFORM but HOST_TOOLCHAIN_BIN (e.g. "fat" instead of x86_64?)
@@ -23,10 +23,10 @@ INSTALL_PREFIX=${INSTALL_PREFIX:=${BUILD_DIR}}
 
 SWIFT_LIB_DIR=${SWIFT_LIB_DIR:=/usr/local/lib/swift}
 
-# brew install swiftxcode/swiftxcode/swift-xctoolchain-5.2
+# brew install swiftxcode/swiftxcode/swift-xctoolchain-5.3
 # brew install swiftxcode/swiftxcode/clang-llvm-bin-8
 # ./retrieve-sdk-packages.sh
-HOST_SWIFT_TOOLCHAIN=${HOST_SWIFT_TOOLCHAIN:=${SWIFT_LIB_DIR}/xctoolchains/${HOST_PLATFORM}-apple-darwin/${SWIFT_VERSION}-current/swift.xctoolchain}
+HOST_SWIFT_TOOLCHAIN=${SWIFT_LIB_DIR}/xctoolchains/${HOST_PLATFORM}-apple-darwin/${SWIFT_VERSION}-current/swift.xctoolchain
 HOST_X_LLD=${SWIFT_LIB_DIR}/clang-llvm/${HOST_PLATFORM}-apple-darwin/8.0.0/bin/lld
 linux_sdk_name="${TARGET_ARCH}-${TARGET_PLATFORM}.sdk"
 LINUX_SDK="${BUILD_DIR}/${linux_sdk_name}"
@@ -46,8 +46,6 @@ function realpath() {
     fi
 }
 
-# This creates the private_includes directory and adjust the absolute links in
-# the modmaps to point to that.
 function fix_glibc_modulemap() {
     local glc_mm
     local tmp
@@ -68,9 +66,7 @@ function fix_glibc_modulemap() {
     rm -rf "$inc_dir"
     mkdir "$inc_dir"
     cat "$tmp" | while IFS='' read line; do
-        if [[ "$line" =~ ^(\ *header\ )\"\/+usr\/include\/\/?(x86_64-linux-gnu\/)?([^\"]+)\" ]]; then
-            # Sample: header "/usr/include//sys/ioctl.h"
-            # AZ Linux has double slash entries: "/usr/include//sys/ioctl.h"
+        if [[ "$line" =~ ^(\ *header\ )\"\/+usr\/include\/(x86_64-linux-gnu\/)?([^\"]+)\" ]]; then
             local orig_inc
             local rel_repl_inc
             local repl_inc
@@ -78,13 +74,6 @@ function fix_glibc_modulemap() {
             orig_inc="${BASH_REMATCH[3]}"
             rel_repl_inc="$(echo "$orig_inc" | tr / _)"
             repl_inc="$inc_dir/$rel_repl_inc"
-            
-            #echo "  create repl:"
-            #echo "    $orig_inc"
-            #echo "    $rel_repl_inc $repl_inc $inc_dir"
-            #echo "    $repl_inc $inc_dir"
-            #echo "    $inc_dir"
-            
             echo "${BASH_REMATCH[1]} \"$(basename "$inc_dir")/$rel_repl_inc\"" >> "$glc_mm"
             if [[ "$orig_inc" == "uuid/uuid.h" ]]; then
                 # no idea why ;)
@@ -230,7 +219,6 @@ echo "  ok."
 
 # TBD: is this really necessary?
 echo "Fetching/Installing Block.h ..."
-echo "  from: ${blocks_h_url}"
 curl --fail -s -o "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$linux_sdk_name/usr/include/Block.h" "$blocks_h_url"
 
 if [ ! -e "${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}/$xc_tc_name/usr/bin/swift-autolink-extract" ]; then

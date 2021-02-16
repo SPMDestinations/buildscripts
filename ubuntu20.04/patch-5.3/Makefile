@@ -3,26 +3,22 @@
 # Created by Helge Heß
 # Copyright © 2020 ZeeZide GmbH. All rights reserved.
 
-# This is a Makefile variant for direct consumption. Plus some extra stuff
-# for testing purposes.
+# This script variant expects an unarchived target Swift toolchain in $PWD,
+# i.e. `usr` (with bin, include, lib, local, share)
 
 prefix=/usr/local
+
 # This is required because we need to hardcode the destination.json to the
 # actual location.
 ACTUAL_DESTINATION_PREFIX=/usr/local
-SWIFT_LIB_DIR=$(ACTUAL_DESTINATION_PREFIX)/lib/swift
 
-VERSION=5.3
-HOST_VERSION=$(VERSION)
-TARBALL_VERSION=$(VERSION)
+SWIFT_VERSION=5.3
 
 TARGET_ARCH=x86_64
 TARGET_TRIPLE=$(TARGET_ARCH)-unknown-linux
 LINUX_TARGET_TRIPLE=$(TARGET_ARCH)-linux-gnu
-PLATFORM=amazonlinux2
-
-HOST_SWIFT_TOOLCHAIN=$(SWIFT_LIB_DIR)/xctoolchains/$(TARGET_ARCH)-apple-darwin/$(HOST_VERSION)-current/swift.xctoolchain
-
+PLATFORM=ubuntu20.04
+	
 BUILD_DIR=$(PWD)/.build
 FETCH_DIR=$(PWD)/.fetch
 
@@ -30,18 +26,24 @@ DESTDIR_RELAPTH=lib/swift/dst/$(TARGET_TRIPLE)
 DESTDIR_PREFIX=$(prefix)/$(DESTDIR_RELAPTH)
 INSTALL_PREFIX=$(ACTUAL_DESTINATION_PREFIX)/$(DESTDIR_RELAPTH)
 
-ALX_awsdomain=amazonaws.com
-ALX_awsregion=default
-ALX_product=core
-ALX_target=latest
-ALX_basearch=$(TARGET_ARCH)
-ALX_releasever=2
-ALX_CORE_MIRROR_LIST="http://amazonlinux.${ALX_awsregion}.${ALX_awsdomain}/${ALX_releasever}/${ALX_product}/${ALX_target}/${ALX_basearch}/mirror.list"
-ALX_BLOBSTORE_URL="https://cdn.amazonlinux.com/blobstore"
+APT_DISTRIBUTION_NAME=focal
+APT_PLATFORM=amd64
+APT_REPOSITORY_URL=http://de.archive.ubuntu.com/ubuntu
+APT_PACKAGES_FILE_URL=$(APT_REPOSITORY_URL)/dists/$(APT_DISTRIBUTION_NAME)/main/binary-$(APT_PLATFORM)/Packages.gz
 
-CROSS_TOOLCHAIN_NAME=swift-$(VERSION)-$(PLATFORM).xtoolchain
+CROSS_TOOLCHAIN_NAME=swift-$(SWIFT_VERSION)-$(PLATFORM).xtoolchain
 
-include packagelist.make
+# The packages we want in the SDK. Those should be as many as possible, so
+# that arbitrary software can be built.
+# (In case that turns out to be an issue, we can always do separate packages
+#  later).
+PACKAGE_NAMES = \
+	libc6 libc6-dev linux-libc-dev libicu55 libicu-dev	\
+	libgcc1 libgcc-5-dev libstdc++6 libstdc++-5-dev 	\
+	zlib1g-dev libedit2 libedit-dev 			\
+	libpq5 libpq-dev libsqlite3-dev				\
+	libxml2 libxml2-dev libncurses5 libncurses5-dev		\
+	libcurl4 libcurl4-openssl-dev libssl1.1 libssl-dev
 
 MKDIR=mkdir
 CP=cp
@@ -56,34 +58,33 @@ install: all
 	         $(DESTDIR_PREFIX)/$(CROSS_TOOLCHAIN_NAME)
 
 clean:
-	$(RM_RF) $(BUILD_DIR)
+	rm -rf $(BUILD_DIR)
 
 distclean: clean
-	$(RM_RF) $(FETCH_DIR)
-	
+	rm -rf $(FETCH_DIR)
+
+# package download
+
 retrieve-packages:
 	BUILD_DIR=$(BUILD_DIR) FETCH_DIR=$(FETCH_DIR)	\
 	TARGET_ARCH=$(TARGET_ARCH)			\
 	LINUX_TARGET_TRIPLE=$(LINUX_TARGET_TRIPLE)	\
 	TARGET_PLATFORM=$(PLATFORM)			\
 	TARGET_SDK_NAME=$(TARGET_ARCH)-$(PLATFORM).sdk 	\
-	ALX_CORE_MIRROR_LIST=$(ALX_CORE_MIRROR_LIST)	\
-	ALX_BLOBSTORE_URL=$(ALX_BLOBSTORE_URL)		\
+	APT_REPOSITORY_URL=$(APT_REPOSITORY_URL)	\
+	APT_PACKAGES_FILE_URL=$(APT_PACKAGES_FILE_URL)	\
 	./retrieve-sdk-packages.sh "$(PACKAGE_NAMES)"
-
 
 # toolchain builder
 
-# A different: the build-toolchain doesn't carry the parameter
-build-toolchain:
-	BUILD_DIR=$(BUILD_DIR)				\
-	FETCH_DIR=$(FETCH_DIR)				\
-	SWIFT_VERSION=$(VERSION)			\
+build-toolchain: $(PACKAGE_FETCH_FILE)
+	BUILD_DIR=$(BUILD_DIR) \
+	FETCH_DIR=$(FETCH_DIR)	\
+	SWIFT_VERSION=$(SWIFT_VERSION) 			\
 	TARGET_ARCH=$(TARGET_ARCH)			\
 	TARGET_PLATFORM=$(PLATFORM)			\
-	HOST_SWIFT_TOOLCHAIN=$(HOST_SWIFT_TOOLCHAIN)	\
 	CROSS_TOOLCHAIN_NAME=$(CROSS_TOOLCHAIN_NAME)	\
 	HOST_PLATFORM=$(uname -m)			\
 	INSTALL_PREFIX=$(INSTALL_PREFIX)		\
-	SWIFT_LIB_DIR=$(SWIFT_LIB_DIR)			\
+	SWIFT_LIB_DIR=$(SWIFT_LIB_DIR) \
 	./build-toolchain.sh
