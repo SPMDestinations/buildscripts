@@ -15,7 +15,8 @@ ACTUAL_DESTINATION_PREFIX=/usr/local
 #VERSION=5.3
 #BRANCH=swift-$(VERSION)-branch
 #SNAPSHOT=DEVELOPMENT-SNAPSHOT-2020-07-31-a
-VERSION=5.3.3
+MAIN_VERSION=5.3
+VERSION=$(MAIN_VERSION).3
 BRANCH=swift-$(VERSION)-release
 SNAPSHOT=RELEASE
 
@@ -104,7 +105,7 @@ retrieve-packages:
 # toolchain builder
 
 build-toolchain: $(PACKAGE_FETCH_FILE)
-	SWIFT_VERSION=$(VERSION) ./build-toolchain.sh $(PWD)/.fetch/swift-$(VERSION)-$(PLATFORM).tar.gz
+	SWIFT_VERSION=$(MAIN_VERSION) ./build-toolchain.sh $(PWD)/.fetch/swift-$(VERSION)-$(PLATFORM).tar.gz
 
 testbuild:
 	rm -rf my-test-app

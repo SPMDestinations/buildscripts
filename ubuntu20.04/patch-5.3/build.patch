@@ -1,6 +1,6 @@
 diff -ruN empty/Makefile patched/Makefile
 --- empty/Makefile	1970-01-01 01:00:00.000000000 +0100
-+++ patched/Makefile	2020-11-21 16:41:57.000000000 +0100
++++ patched/Makefile	2021-02-16 22:36:18.000000000 +0100
 @@ -0,0 +1,90 @@
 +# Makefile
 +#
@@ -21,7 +21,7 @@ diff -ruN empty/Makefile patched/Makefile
 +TARGET_ARCH=x86_64
 +TARGET_TRIPLE=$(TARGET_ARCH)-unknown-linux
 +LINUX_TARGET_TRIPLE=$(TARGET_ARCH)-linux-gnu
-+PLATFORM=ubuntu16.04
++PLATFORM=ubuntu20.04
 +	
 +BUILD_DIR=$(PWD)/.build
 +FETCH_DIR=$(PWD)/.fetch
@@ -30,7 +30,7 @@ diff -ruN empty/Makefile patched/Makefile
 +DESTDIR_PREFIX=$(prefix)/$(DESTDIR_RELAPTH)
 +INSTALL_PREFIX=$(ACTUAL_DESTINATION_PREFIX)/$(DESTDIR_RELAPTH)
 +
-+APT_DISTRIBUTION_NAME=xenial
++APT_DISTRIBUTION_NAME=focal
 +APT_PLATFORM=amd64
 +APT_REPOSITORY_URL=http://de.archive.ubuntu.com/ubuntu
 +APT_PACKAGES_FILE_URL=$(APT_REPOSITORY_URL)/dists/$(APT_DISTRIBUTION_NAME)/main/binary-$(APT_PLATFORM)/Packages.gz
@@ -94,7 +94,7 @@ diff -ruN empty/Makefile patched/Makefile
 +	./build-toolchain.sh
 diff -ruN empty/build-toolchain.sh patched/build-toolchain.sh
 --- empty/build-toolchain.sh	1970-01-01 01:00:00.000000000 +0100
-+++ patched/build-toolchain.sh	2020-11-21 16:55:09.000000000 +0100
++++ patched/build-toolchain.sh	2021-02-16 22:36:18.000000000 +0100
 @@ -0,0 +1,262 @@
 +#!/bin/bash
 +#
@@ -108,9 +108,9 @@ diff -ruN empty/build-toolchain.sh patched/build-toolchain.sh
 +
 +BUILD_DIR=${BUILD_DIR:=${PWD}/.build}
 +FETCH_DIR=${FETCH_DIR:=${PWD}/.fetch}
-+SWIFT_VERSION=${SWIFT_VERSION:=5.2}
++SWIFT_VERSION=${SWIFT_VERSION:=5.3}
 +TARGET_ARCH=${TARGET_ARCH:=x86_64}
-+TARGET_PLATFORM=${TARGET_PLATFORM:=ubuntu16.04}
++TARGET_PLATFORM=${TARGET_PLATFORM:=ubuntu20.04}
 +CROSS_TOOLCHAIN_NAME=${CROSS_TOOLCHAIN_NAME:=swift-${SWIFT_VERSION}-${TARGET_PLATFORM}.xtoolchain}
 +HOST_PLATFORM=${HOST_PLATFORM:=x86_64}
 +# FIXME: this should not be HOST_PLATFORM but HOST_TOOLCHAIN_BIN (e.g. "fat" instead of x86_64?)
@@ -360,7 +360,7 @@ diff -ruN empty/build-toolchain.sh patched/build-toolchain.sh
 +echo "  ${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}"
 diff -ruN empty/retrieve-sdk-packages.sh patched/retrieve-sdk-packages.sh
 --- empty/retrieve-sdk-packages.sh	1970-01-01 01:00:00.000000000 +0100
-+++ patched/retrieve-sdk-packages.sh	2020-10-16 13:42:25.000000000 +0200
++++ patched/retrieve-sdk-packages.sh	2021-02-16 22:36:18.000000000 +0100
 @@ -0,0 +1,136 @@
 +#!/bin/bash
 +#
@@ -377,10 +377,10 @@ diff -ruN empty/retrieve-sdk-packages.sh patched/retrieve-sdk-packages.sh
 +FETCH_DIR=${PWD}/.fetch
 +TARGET_ARCH=${TARGET_ARCH:=x86_64}
 +LINUX_TARGET_TRIPLE="${TARGET_ARCH}-linux-gnu"
-+TARGET_PLATFORM=${TARGET_PLATFORM:=ubuntu16.04}
++TARGET_PLATFORM=${TARGET_PLATFORM:=ubuntu20.04}
 +TARGET_SDK_NAME=${TARGET_SDK_NAME:="${TARGET_ARCH}-${TARGET_PLATFORM}.sdk"}
 +APT_REPOSITORY_URL=${APT_REPOSITORY_URL:="http://gb.archive.ubuntu.com/ubuntu"}
-+APT_PACKAGES_FILE_URL=${APT_PACKAGES_FILE_URL:="${APT_REPOSITORY_URL}/dists/xenial/main/binary-amd64/Packages.gz"}
++APT_PACKAGES_FILE_URL=${APT_PACKAGES_FILE_URL:="${APT_REPOSITORY_URL}/dists/focal/main/binary-amd64/Packages.gz"}
 +
 +IFS=', ' read -r -a pkg_names <<< "$1"
 +
@@ -496,5 +496,5 @@ diff -ruN empty/retrieve-sdk-packages.sh patched/retrieve-sdk-packages.sh
 +done
 +
 +# TBD: 16.04 specific?
-+ln -s 5 "$TARGET_SDK_NAME/usr/lib/gcc/${LINUX_TARGET_TRIPLE}/5.4.0"
++#ln -s 5 "$TARGET_SDK_NAME/usr/lib/gcc/${LINUX_TARGET_TRIPLE}/5.4.0"
 +)
