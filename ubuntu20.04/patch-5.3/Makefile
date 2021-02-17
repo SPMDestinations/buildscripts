@@ -1,7 +1,7 @@
 # Makefile
 #
 # Created by Helge Heß
-# Copyright © 2020 ZeeZide GmbH. All rights reserved.
+# Copyright © 2020-2021 ZeeZide GmbH. All rights reserved.
 
 # This script variant expects an unarchived target Swift toolchain in $PWD,
 # i.e. `usr` (with bin, include, lib, local, share)
@@ -12,13 +12,14 @@ prefix=/usr/local
 # actual location.
 ACTUAL_DESTINATION_PREFIX=/usr/local
 
-SWIFT_VERSION=5.3
+MAIN_VERSION=5.3
+SWIFT_VERSION=$(MAIN_VERSION).3
 
 TARGET_ARCH=x86_64
 TARGET_TRIPLE=$(TARGET_ARCH)-unknown-linux
 LINUX_TARGET_TRIPLE=$(TARGET_ARCH)-linux-gnu
 PLATFORM=ubuntu20.04
-	
+
 BUILD_DIR=$(PWD)/.build
 FETCH_DIR=$(PWD)/.fetch
 
@@ -37,13 +38,7 @@ CROSS_TOOLCHAIN_NAME=swift-$(SWIFT_VERSION)-$(PLATFORM).xtoolchain
 # that arbitrary software can be built.
 # (In case that turns out to be an issue, we can always do separate packages
 #  later).
-PACKAGE_NAMES = \
-	libc6 libc6-dev linux-libc-dev libicu55 libicu-dev	\
-	libgcc1 libgcc-5-dev libstdc++6 libstdc++-5-dev 	\
-	zlib1g-dev libedit2 libedit-dev 			\
-	libpq5 libpq-dev libsqlite3-dev				\
-	libxml2 libxml2-dev libncurses5 libncurses5-dev		\
-	libcurl4 libcurl4-openssl-dev libssl1.1 libssl-dev
+include packagelist.make
 
 MKDIR=mkdir
 CP=cp
@@ -80,7 +75,7 @@ retrieve-packages:
 build-toolchain: $(PACKAGE_FETCH_FILE)
 	BUILD_DIR=$(BUILD_DIR) \
 	FETCH_DIR=$(FETCH_DIR)	\
-	SWIFT_VERSION=$(SWIFT_VERSION) 			\
+	SWIFT_VERSION=$(MAIN_VERSION) 			\
 	TARGET_ARCH=$(TARGET_ARCH)			\
 	TARGET_PLATFORM=$(PLATFORM)			\
 	CROSS_TOOLCHAIN_NAME=$(CROSS_TOOLCHAIN_NAME)	\

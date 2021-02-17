@@ -1,7 +1,7 @@
 # Makefile
 #
 # Created by Helge Heß
-# Copyright © 2020-201 ZeeZide GmbH. All rights reserved.
+# Copyright © 2020-2021 ZeeZide GmbH. All rights reserved.
 
 # This is a Makefile variant for direct consumption. Plus some extra stuff
 # for testing purposes.
@@ -82,6 +82,7 @@ patch-5.3/build.patch: packagelist.make Makefile retrieve-sdk-packages.sh build-
 	$(MKDIR) -p $(PATCH_DIR)/empty
 	$(MKDIR) -p $(PATCH_DIR)/patched
 	$(CP) -ac retrieve-sdk-packages.sh $(PATCH_DIR)/patched/
+	$(CP) -ac packagelist.make         $(PATCH_DIR)/patched/
 	$(CP) -ac build-toolchain.sh       $(PATCH_DIR)/patched/
 	$(CP) -ac patch-5.3/Makefile       $(PATCH_DIR)/patched/
 	(cd $(PATCH_DIR); $(DIRDIFF) empty patched > $(PWD)/$@ ; [ $$? -eq 1 ])
