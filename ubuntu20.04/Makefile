@@ -115,7 +115,7 @@ testbuild:
 test-rebuild:
 	cd my-test-app && swift build --destination $(BUILD_DIR)/swift-$(VERSION)-$(PLATFORM).xtoolchain/destination.json
 
-DOCKER_IMAGE=swiftlang/swift:nightly-5.3-focal
+DOCKER_IMAGE=swiftlang/swift:5.3.3-focal
 
 # ld.so doesn't seem to be setup properly, ld.so.conf.d doesn't include
 # the `/usr/lib/swift/linux`
