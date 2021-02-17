@@ -48,7 +48,7 @@ PGK_FETCHER=curl -L
 DIRDIFF=diff -ruN
 
 all: patch-5.3/build.patch
-	
+
 help:
 	echo $(PACKAGE_URL)
 	echo "make retrieve-packages"
@@ -70,12 +70,12 @@ clean:
 
 distclean: clean
 	$(RM_RF) $(FETCH_DIR)
-	
-	
+
+
 # patches
 
 swift-5.3-patch: patch-5.3/build.patch
-	
+
 patch-5.3/build.patch: Makefile retrieve-sdk-packages.sh build-toolchain.sh patch-5.3/Makefile
 	$(RM_RF) $@
 	$(RM_RF) $(PATCH_DIR)
@@ -134,4 +134,3 @@ testbuild-bash:
 		--workdir "/run" 		\
 		$(DOCKER_IMAGE) 		\
 		bash
-	
