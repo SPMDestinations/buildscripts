@@ -1,11 +1,11 @@
 diff -ruN empty/Makefile patched/Makefile
 --- empty/Makefile	1970-01-01 01:00:00.000000000 +0100
-+++ patched/Makefile	2021-02-17 16:19:07.000000000 +0100
-@@ -0,0 +1,90 @@
++++ patched/Makefile	2021-02-17 17:17:45.000000000 +0100
+@@ -0,0 +1,85 @@
 +# Makefile
 +#
 +# Created by Helge Heß
-+# Copyright © 2020 ZeeZide GmbH. All rights reserved.
++# Copyright © 2020-2021 ZeeZide GmbH. All rights reserved.
 +
 +# This script variant expects an unarchived target Swift toolchain in $PWD,
 +# i.e. `usr` (with bin, include, lib, local, share)
@@ -16,13 +16,14 @@ diff -ruN empty/Makefile patched/Makefile
 +# actual location.
 +ACTUAL_DESTINATION_PREFIX=/usr/local
 +
-+SWIFT_VERSION=5.3
++MAIN_VERSION=5.3
++SWIFT_VERSION=$(MAIN_VERSION).3
 +
 +TARGET_ARCH=x86_64
 +TARGET_TRIPLE=$(TARGET_ARCH)-unknown-linux
 +LINUX_TARGET_TRIPLE=$(TARGET_ARCH)-linux-gnu
 +PLATFORM=ubuntu20.04
-+	
++
 +BUILD_DIR=$(PWD)/.build
 +FETCH_DIR=$(PWD)/.fetch
 +
@@ -35,19 +36,13 @@ diff -ruN empty/Makefile patched/Makefile
 +APT_REPOSITORY_URL=http://de.archive.ubuntu.com/ubuntu
 +APT_PACKAGES_FILE_URL=$(APT_REPOSITORY_URL)/dists/$(APT_DISTRIBUTION_NAME)/main/binary-$(APT_PLATFORM)/Packages.gz
 +
-+CROSS_TOOLCHAIN_NAME=swift-$(SWIFT_VERSION)-$(PLATFORM).xtoolchain
++CROSS_TOOLCHAIN_NAME=swift-$(MAIN_VERSION)-$(PLATFORM).xtoolchain
 +
 +# The packages we want in the SDK. Those should be as many as possible, so
 +# that arbitrary software can be built.
 +# (In case that turns out to be an issue, we can always do separate packages
 +#  later).
-+PACKAGE_NAMES = \
-+	libc6 libc6-dev linux-libc-dev libicu55 libicu-dev	\
-+	libgcc1 libgcc-5-dev libstdc++6 libstdc++-5-dev 	\
-+	zlib1g-dev libedit2 libedit-dev 			\
-+	libpq5 libpq-dev libsqlite3-dev				\
-+	libxml2 libxml2-dev libncurses5 libncurses5-dev		\
-+	libcurl4 libcurl4-openssl-dev libssl1.1 libssl-dev
++include packagelist.make
 +
 +MKDIR=mkdir
 +CP=cp
@@ -84,7 +79,7 @@ diff -ruN empty/Makefile patched/Makefile
 +build-toolchain: $(PACKAGE_FETCH_FILE)
 +	BUILD_DIR=$(BUILD_DIR) \
 +	FETCH_DIR=$(FETCH_DIR)	\
-+	SWIFT_VERSION=$(SWIFT_VERSION) 			\
++	SWIFT_VERSION=$(MAIN_VERSION) 			\
 +	TARGET_ARCH=$(TARGET_ARCH)			\
 +	TARGET_PLATFORM=$(PLATFORM)			\
 +	CROSS_TOOLCHAIN_NAME=$(CROSS_TOOLCHAIN_NAME)	\
@@ -358,6 +353,25 @@ diff -ruN empty/build-toolchain.sh patched/build-toolchain.sh
 +
 +echo "done:"
 +echo "  ${BUILD_DIR}/${CROSS_TOOLCHAIN_NAME}"
+diff -ruN empty/packagelist.make patched/packagelist.make
+--- empty/packagelist.make	1970-01-01 01:00:00.000000000 +0100
++++ patched/packagelist.make	2021-02-17 16:50:11.000000000 +0100
+@@ -0,0 +1,15 @@
++# Makefile
++
++PACKAGE_NAMES = \
++	libc6-dev linux-libc-dev libicu66 libgcc-9-dev libicu-dev \
++	libc6 libgcc1 libgcc-s1 libstdc++-9-dev libstdc++6 zlib1g-dev \
++	libpq5 libpq-dev libedit2 libedit-dev libsqlite3-dev \
++	libxml2 libxml2-dev libncurses5 libncurses5-dev \
++	libncurses6 libncurses6-dev \
++	libcurl4 libcurl4-openssl-dev libssl1.1 libssl-dev \
++	libuuid1 libpython3-dev libpython3.8 libpython3.8-dev \
++	liblua5.3-0 liblua5.3-dev \
++	libpng16-16 libpng-dev libpnglite0 libpnglite-dev \
++	libtiff5 libtiff-dev libtiff5-dev libuv1 libuv1-dev \
++	liblz4-1 liblz4-dev \
++	libpcre2-posix2 libpcre2-dev libpopt0 libpopt-dev
 diff -ruN empty/retrieve-sdk-packages.sh patched/retrieve-sdk-packages.sh
 --- empty/retrieve-sdk-packages.sh	1970-01-01 01:00:00.000000000 +0100
 +++ patched/retrieve-sdk-packages.sh	2021-02-17 16:18:19.000000000 +0100

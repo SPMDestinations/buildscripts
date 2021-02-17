@@ -32,7 +32,7 @@ APT_PLATFORM=amd64
 APT_REPOSITORY_URL=http://de.archive.ubuntu.com/ubuntu
 APT_PACKAGES_FILE_URL=$(APT_REPOSITORY_URL)/dists/$(APT_DISTRIBUTION_NAME)/main/binary-$(APT_PLATFORM)/Packages.gz
 
-CROSS_TOOLCHAIN_NAME=swift-$(SWIFT_VERSION)-$(PLATFORM).xtoolchain
+CROSS_TOOLCHAIN_NAME=swift-$(MAIN_VERSION)-$(PLATFORM).xtoolchain
 
 # The packages we want in the SDK. Those should be as many as possible, so
 # that arbitrary software can be built.
