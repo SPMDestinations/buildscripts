@@ -48,7 +48,7 @@ PGK_FETCHER=curl -L
 DIRDIFF=diff -ruN
 
 all: patch-5.3/build.patch
-	
+
 help:
 	echo $(PACKAGE_URL)
 	echo "make retrieve-packages"
@@ -70,12 +70,12 @@ clean:
 
 distclean: clean
 	$(RM_RF) $(FETCH_DIR)
-	
-	
+
+
 # patches
 
 swift-5.3-patch: patch-5.3/build.patch
-	
+
 patch-5.3/build.patch: Makefile retrieve-sdk-packages.sh build-toolchain.sh patch-5.3/Makefile
 	$(RM_RF) $@
 	$(RM_RF) $(PATCH_DIR)
@@ -110,12 +110,12 @@ build-toolchain: $(PACKAGE_FETCH_FILE)
 testbuild:
 	rm -rf my-test-app
 	mkdir -p my-test-app && cd my-test-app && swift package init --type=executable
-	cd my-test-app && swift build --destination $(BUILD_DIR)/swift-$(VERSION)-$(PLATFORM).xtoolchain/destination.json
+	cd my-test-app && swift build --destination $(BUILD_DIR)/swift-$(MAIN_VERSION)-$(PLATFORM).xtoolchain/destination.json
 
 test-rebuild:
-	cd my-test-app && swift build --destination $(BUILD_DIR)/swift-$(VERSION)-$(PLATFORM).xtoolchain/destination.json
+	cd my-test-app && swift build --destination $(BUILD_DIR)/swift-$(MAIN_VERSION)-$(PLATFORM).xtoolchain/destination.json
 
-DOCKER_IMAGE=swiftlang/swift:nightly-5.3-focal
+DOCKER_IMAGE=swift:5.3.3-focal
 
 # ld.so doesn't seem to be setup properly, ld.so.conf.d doesn't include
 # the `/usr/lib/swift/linux`
@@ -134,4 +134,3 @@ testbuild-bash:
 		--workdir "/run" 		\
 		$(DOCKER_IMAGE) 		\
 		bash
-	

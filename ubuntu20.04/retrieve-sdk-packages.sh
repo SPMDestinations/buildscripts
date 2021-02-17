@@ -84,23 +84,34 @@ rm -rf   "${BUILD_DIR}/${TARGET_SDK_NAME}"
 mkdir -p "${BUILD_DIR}/${TARGET_SDK_NAME}"
 
 
+pkgs=()
 echo "Fetching download URLs for packages ..."
 # This is downloading the packages in `pkg_names`,
-# first ist fetchs the packages file.
+# first ist fetches the packages file.
 # weissi: Oopsie, this is slow but seemingly fast enough :)
 while read -r line; do
-    for pkg_name in "${pkg_names[@]}"; do
-        if [[ "$line" =~ ^Filename:\ (.*\/([^/_]+)_.*$) ]]; then
-            # echo "${BASH_REMATCH[2]}"
+    # Note: REMATCH means Regular Expression Match, not "re-match" ;-)
+    # Filename: pool/main/g/gcc-10/libgcc-s1_10-20200411-0ubuntu1_amd64.deb
+    # BASH_REMATCH[0]: whole line
+    # BASH_REMATCH[1]: pool/main/g/gcc-10/libgcc-s1_10-20200411-0ubuntu1_amd64.deb
+    # BASH_REMATCH[2]: libgcc-s1
+    if [[ "$line" =~ ^Filename:\ (.*\/([^/_]+)_.*$) ]]; then
+        #echo "${BASH_REMATCH[2]}"
+        for pkg_name in "${pkg_names[@]}"; do
             if [[ "${BASH_REMATCH[2]}" == "$pkg_name" ]]; then
                 new_pkg="$APT_REPOSITORY_URL/${BASH_REMATCH[1]}"
                 pkgs+=( "$new_pkg" )
                 echo "- will download $new_pkg"
             fi
-        fi
-    done
+        done
+    fi
 done < <(download_stdout "$APT_PACKAGES_FILE_URL" | gunzip -d -c | grep ^Filename:)
 
+if [[ -z ${pkgs+x} ]]; then
+    echo "No packages found?"
+    echo "Expected: ${pkg_names[@]}"
+    exit 32
+fi
 
 echo "Download and unpack packages into ${BUILD_DIR}/${TARGET_SDK_NAME} ..."
 # Loop over the packages we want to fetch, and unpack them
