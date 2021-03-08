@@ -27,7 +27,7 @@ SWIFT_LIB_DIR=${SWIFT_LIB_DIR:=/usr/local/lib/swift}
 # brew install swiftxcode/swiftxcode/clang-llvm-bin-8
 # ./retrieve-sdk-packages.sh
 HOST_SWIFT_TOOLCHAIN=${HOST_SWIFT_TOOLCHAIN:=${SWIFT_LIB_DIR}/xctoolchains/${HOST_PLATFORM}-apple-darwin/${SWIFT_VERSION}-current/swift.xctoolchain}
-HOST_X_LLD=${SWIFT_LIB_DIR}/clang-llvm/${HOST_PLATFORM}-apple-darwin/8.0.0/bin/lld
+HOST_X_LLD=${HOST_X_LLD:=${SWIFT_LIB_DIR}/clang-llvm/${HOST_PLATFORM}-apple-darwin/8.0.0/bin/lld}
 linux_sdk_name="${TARGET_ARCH}-${TARGET_PLATFORM}.sdk"
 LINUX_SDK="${BUILD_DIR}/${linux_sdk_name}"
 

@@ -34,7 +34,10 @@ PLATFORM=amazonlinux2
 PACKAGE_URL=https://swift.org/builds/$(BRANCH)/$(subst .,,$(PLATFORM))/swift-$(TARBALL_VERSION)-$(SNAPSHOT)/swift-$(TARBALL_VERSION)-$(SNAPSHOT)-$(PLATFORM).tar.gz
 
 HOST_SWIFT_TOOLCHAIN=/usr/local/lib/swift/xctoolchains/$(ARCH)-apple-darwin/$(HOST_VERSION)-current/swift.xctoolchain
+HOST_X_LLD=$(SWIFT_LIB_DIR)/clang-llvm/${HOST_PLATFORM}-apple-darwin/8.0.0/bin/lld
 
+
+INSTALL_PREFIX=$(BUILD_DIR)
 
 BUILD_DIR=$(PWD)/.build
 FETCH_DIR=$(PWD)/.fetch
@@ -148,6 +151,8 @@ build-toolchain: $(PACKAGE_FETCH_FILE)
 	HOST_SWIFT_TOOLCHAIN=$(HOST_SWIFT_TOOLCHAIN)	\
 	TARGET_ARCH=$(ARCH)				\
 	TARGET_PLATFORM=$(PLATFORM)			\
+	HOST_X_LLD=$(HOST_X_LLD) \
+	INSTALL_PREFIX=$(INSTALL_PREFIX) \
 	./build-toolchain.sh $(PWD)/.fetch/swift-$(VERSION)-$(PLATFORM).tar.gz
 
 

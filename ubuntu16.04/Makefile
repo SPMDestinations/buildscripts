@@ -25,6 +25,11 @@ LINUX_TARGET_TRIPLE=$(ARCH)-linux-gnu
 PLATFORM=ubuntu16.04
 PACKAGE_URL=https://swift.org/builds/$(BRANCH)/$(subst .,,$(PLATFORM))/swift-$(VERSION)-$(SNAPSHOT)/swift-$(VERSION)-$(SNAPSHOT)-$(PLATFORM).tar.gz
 
+HOST_SWIFT_TOOLCHAIN=/usr/local/lib/swift/xctoolchains/$(ARCH)-apple-darwin/$(HOST_VERSION)-current/swift.xctoolchain
+HOST_X_LLD=$(SWIFT_LIB_DIR)/clang-llvm/${HOST_PLATFORM}-apple-darwin/8.0.0/bin/lld
+
+INSTALL_PREFIX=$(BUILD_DIR)
+
 BUILD_DIR=$(PWD)/.build
 FETCH_DIR=$(PWD)/.fetch
 PATCH_DIR=$(BUILD_DIR)/patch
@@ -109,7 +114,13 @@ retrieve-packages:
 # toolchain builder
 
 build-toolchain: $(PACKAGE_FETCH_FILE)
-	SWIFT_VERSION=$(VERSION) ./build-toolchain.sh $(PWD)/.fetch/swift-$(VERSION)-$(PLATFORM).tar.gz
+	SWIFT_VERSION=$(VERSION)			\
+	HOST_SWIFT_TOOLCHAIN=$(HOST_SWIFT_TOOLCHAIN)	\
+	TARGET_ARCH=$(ARCH)				\
+	TARGET_PLATFORM=$(PLATFORM)			\
+	HOST_X_LLD=$(HOST_X_LLD) \
+	INSTALL_PREFIX=$(INSTALL_PREFIX) \
+	./build-toolchain.sh $(PWD)/.fetch/swift-$(VERSION)-$(PLATFORM).tar.gz
 
 testbuild:
 	rm -rf my-test-app
