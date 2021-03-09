@@ -116,8 +116,6 @@ retrieve-packages:
 build-toolchain: $(PACKAGE_FETCH_FILE)
 	SWIFT_VERSION=$(VERSION)			\
 	HOST_SWIFT_TOOLCHAIN=$(HOST_SWIFT_TOOLCHAIN)	\
-	TARGET_ARCH=$(ARCH)				\
-	TARGET_PLATFORM=$(PLATFORM)			\
 	HOST_X_LLD=$(HOST_X_LLD) \
 	INSTALL_PREFIX=$(INSTALL_PREFIX) \
 	./build-toolchain.sh $(PWD)/.fetch/swift-$(VERSION)-$(PLATFORM).tar.gz
