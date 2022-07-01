@@ -15,8 +15,13 @@ ACTUAL_DESTINATION_PREFIX=/usr/local
 #VERSION=5.3
 #BRANCH=swift-$(VERSION)-branch
 #SNAPSHOT=DEVELOPMENT-SNAPSHOT-2020-07-31-a
-MAIN_VERSION=5.3
-VERSION=$(MAIN_VERSION).3
+#MAIN_VERSION=5.3
+#VERSION=$(MAIN_VERSION).3
+#BRANCH=swift-$(VERSION)-release
+#SNAPSHOT=RELEASE
+DOWNLOAD_BASEURL=https://download.swift.org
+MAIN_VERSION=5.6
+VERSION=$(MAIN_VERSION).2
 BRANCH=swift-$(VERSION)-release
 SNAPSHOT=RELEASE
 
@@ -24,7 +29,7 @@ ARCH=x86_64
 TARGET=$(ARCH)-unknown-linux
 LINUX_TARGET_TRIPLE=$(ARCH)-linux-gnu
 PLATFORM=ubuntu20.04
-PACKAGE_URL=https://swift.org/builds/$(BRANCH)/$(subst .,,$(PLATFORM))/swift-$(VERSION)-$(SNAPSHOT)/swift-$(VERSION)-$(SNAPSHOT)-$(PLATFORM).tar.gz
+PACKAGE_URL=$(DOWNLOAD_BASEURL)/$(BRANCH)/$(subst .,,$(PLATFORM))/swift-$(VERSION)-$(SNAPSHOT)/swift-$(VERSION)-$(SNAPSHOT)-$(PLATFORM).tar.gz
 
 BUILD_DIR=$(PWD)/.build
 FETCH_DIR=$(PWD)/.fetch
@@ -47,13 +52,13 @@ RM_RF=rm -rf
 PGK_FETCHER=curl -L
 DIRDIFF=diff -ruN
 
-all: patch-5.3/build.patch
+all: patch-5.6/build.patch
 
 help:
-	echo $(PACKAGE_URL)
-	echo "make retrieve-packages"
-	echo "make build-toolchain"
-	echo "testbuild"
+	@echo $(PACKAGE_URL)
+	@echo "make retrieve-packages"
+	@echo "make build-toolchain"
+	@echo "testbuild"
 
 local-build: $(PACKAGE_FETCH_FILE) retrieve-packages build-toolchain
 
@@ -88,6 +93,20 @@ patch-5.3/build.patch: packagelist.make Makefile retrieve-sdk-packages.sh build-
 	(cd $(PATCH_DIR); $(DIRDIFF) empty patched > $(PWD)/$@ ; [ $$? -eq 1 ])
 	cat patch-5.3/build.patch | shasum -a 256
 
+swift-5.6-patch: patch-5.6/build.patch
+
+patch-5.6/build.patch: packagelist.make Makefile retrieve-sdk-packages.sh build-toolchain.sh patch-5.6/Makefile
+	$(RM_RF) $@
+	$(RM_RF) $(PATCH_DIR)
+	$(MKDIR) -p $(PATCH_DIR)/empty
+	$(MKDIR) -p $(PATCH_DIR)/patched
+	$(CP) -ac retrieve-sdk-packages.sh $(PATCH_DIR)/patched/
+	$(CP) -ac packagelist.make         $(PATCH_DIR)/patched/
+	$(CP) -ac build-toolchain.sh       $(PATCH_DIR)/patched/
+	$(CP) -ac patch-5.6/Makefile       $(PATCH_DIR)/patched/
+	(cd $(PATCH_DIR); $(DIRDIFF) empty patched > $(PWD)/$@ ; [ $$? -eq 1 ])
+	cat patch-5.6/build.patch | shasum -a 256
+
 # package download
 
 include packagelist.make
@@ -106,7 +125,7 @@ retrieve-packages:
 # toolchain builder
 
 build-toolchain: $(PACKAGE_FETCH_FILE)
-	SWIFT_VERSION=$(MAIN_VERSION) ./build-toolchain.sh $(PWD)/.fetch/swift-$(VERSION)-$(PLATFORM).tar.gz
+	SWIFT_VERSION=$(MAIN_VERSION) SWIFT_LIB_DIR=$(prefix)/lib/swift ./build-toolchain.sh $(PWD)/.fetch/swift-$(VERSION)-$(PLATFORM).tar.gz
 
 testbuild:
 	rm -rf my-test-app
@@ -116,7 +135,8 @@ testbuild:
 test-rebuild:
 	cd my-test-app && swift build --destination $(BUILD_DIR)/swift-$(MAIN_VERSION)-$(PLATFORM).xtoolchain/destination.json
 
-DOCKER_IMAGE=swift:5.3.3-focal
+#DOCKER_IMAGE=swift:5.3.3-focal
+DOCKER_IMAGE=swift:5.6.2-focal
 
 # ld.so doesn't seem to be setup properly, ld.so.conf.d doesn't include
 # the `/usr/lib/swift/linux`
