@@ -11,10 +11,14 @@ prefix=/usr/local
 #VERSION=5.2.4
 #BRANCH=swift-$(VERSION)-release
 #SNAPSHOT=RELEASE
-VERSION=5.3
-BRANCH=swift-$(VERSION)-branch
-SNAPSHOT=DEVELOPMENT-SNAPSHOT-2020-07-31-a
+#VERSION=5.3
+#BRANCH=swift-$(VERSION)-branch
+#SNAPSHOT=DEVELOPMENT-SNAPSHOT-2020-07-31-a
+VERSION=5.6.2
+BRANCH=swift-$(VERSION)-release
+SNAPSHOT=RELEASE
 
+DOWNLOAD_BASEURL=https://download.swift.org
 BUILD_DIR=.build
 FETCH_DIR=.fetch
 PACKAGE_FETCH_FILENAME=swift-$(VERSION).pkg.xar
@@ -50,7 +54,7 @@ unpack-package: $(PACKAGE_FETCH_FILE)
 $(PACKAGE_FETCH_FILE):
 	$(MKDIR) -p $(FETCH_DIR)
 	(if ! test -f $@; then \
-	 $(PGK_FETCHER) -o $@ https://swift.org/builds/$(BRANCH)/xcode/swift-$(VERSION)-$(SNAPSHOT)/swift-$(VERSION)-$(SNAPSHOT)-osx.pkg;\
+	 $(PGK_FETCHER) -o $@ $(DOWNLOAD_BASEURL)/$(BRANCH)/xcode/swift-$(VERSION)-$(SNAPSHOT)/swift-$(VERSION)-$(SNAPSHOT)-osx.pkg;\
 	 fi)
 	
 clean:
